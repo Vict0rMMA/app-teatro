@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { inflateSync } from "node:zlib";
 import PizZip from "pizzip";
 import { describe, expect, it } from "vitest";
 import { fitInBox, generarPlanillas, imageSize, renderRegistro, type PlanillaInput } from "@/lib/docx/planillas";
@@ -123,7 +124,13 @@ describe("generarPlanillas", () => {
     const [ll, col] = generarPlanillas({ ...base, firma: null, aforo: null, notaLlaves: "" }).map((f) => open(f.buffer));
     expect(ll.lines).toContain("NOTA: ");
     const media = Object.keys(ll.zip.files).filter((n) => n.startsWith("word/media/") && n !== "word/media/image1.png");
-    expect(ll.zip.file(media[0])!.asNodeBuffer().length).toBeLessThan(100);
+    const blank = ll.zip.file(media[0])!.asNodeBuffer();
+    expect(blank.length).toBeLessThan(100);
+    // El recuadro debe quedar realmente vacío: todos los píxeles con alfa 0.
+    const idat = blank.subarray(blank.indexOf("IDAT") + 4, blank.indexOf("IEND") - 8);
+    const raw = inflateSync(idat);
+    expect(blank[25]).toBe(6); // RGBA
+    for (let i = 1; i < raw.length; i += 4) expect(raw[i + 3]).toBe(0);
     expect(col.lines).toContain("Total boletas: ____ personas aproximadamente.");
   });
 

@@ -32,17 +32,17 @@ export default function PrivacidadPage() {
         <section>
           <h2>Qué datos guardamos</h2>
           <ul>
-            <li>Tu cuenta: correo electrónico y método de ingreso (correo o Google).</li>
+            <li>Tu cuenta: correo electrónico y método de ingreso (correo, Google o Microsoft).</li>
             <li>Tu perfil: nombre completo, firma (imagen, opcional) y textos por defecto.</li>
             <li>Tus horas: fecha, evento, lugar de trabajo, horario, horas y valor.</li>
             <li>
-              Por cada evento: nombre, fecha, horarios, aforo, nota, observaciones y la lista del personal con nombre, cargo, llegada,
-              salida, horas, valor pagado, P.P y desempeño.
+              Por cada evento: nombre, fecha, horarios, aforo, notas, evaluación, observaciones y la lista del personal con nombre,
+              cargo, UBI, llegada, salida, horas, valor pagado, P.P, desempeño y observación.
             </li>
           </ul>
           <p className="mt-3">
             <strong>No guardamos</strong> el archivo de registro que subes, ni las cédulas ni los teléfonos del personal: se leen en memoria
-            para generar las planillas y se descartan.
+            para completar el REGISTRO, que se te entrega una sola vez y se descarta.
           </p>
         </section>
 
@@ -67,7 +67,8 @@ export default function PrivacidadPage() {
         <section>
           <h2>Dónde se almacenan</h2>
           <p>
-            Los datos se guardan en Google Firebase (Authentication, Firestore y Storage) y la aplicación se ejecuta en Vercel. Ambos
+            Los datos se guardan en Google Firebase (Authentication y Firestore) y la aplicación se ejecuta en Vercel. Los archivos de
+            Word no se almacenan: se generan de nuevo cada vez que los descargas. Ambos
             proveedores actúan como encargados y pueden alojar la información fuera de Colombia, con niveles adecuados de protección. Cada
             cuenta está aislada: las reglas de seguridad impiden que un usuario lea datos de otro.
           </p>

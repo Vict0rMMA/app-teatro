@@ -175,7 +175,7 @@ function UploadTab({ onReady, onError, onCancel }: { onReady: (b: Blob) => void;
     const png = await trimAndScale(processed, 800);
     setBusy(false);
     if (!png) return onError("No se ve ninguna firma: baja el umbral o usa una foto con más contraste.");
-    if (png.size > FIRMA_MAX_BYTES) return onError("La firma procesada supera 2 MB. Usa una imagen más pequeña.");
+    if (png.size > FIRMA_MAX_BYTES) return onError("La firma procesada supera 150 KB. Usa una foto más nítida y de cerca.");
     onReady(png);
   }
 

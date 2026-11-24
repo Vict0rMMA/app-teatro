@@ -46,7 +46,7 @@ export interface GeneratedFile {
 
 /** PNG transparente de 1×1: ocupa el recuadro de la firma sin dibujar nada. */
 const BLANK_PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP4//8/AwAI/AL+eMSysAAAAABJRU5ErkJggg==",
   "base64",
 );
 const UNDERLINE_MEJORAR = "_______________________________________";
@@ -83,6 +83,8 @@ export function imageSize(buf: Buffer): { width: number; height: number } | null
   }
   return null;
 }
+
+export { BLANK_PNG };
 
 export function isPng(buf: Buffer) {
   return buf.length > 24 && buf.readUInt32BE(0) === 0x89504e47;

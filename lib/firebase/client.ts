@@ -10,13 +10,11 @@ import {
   persistentMultipleTabManager,
   type Firestore,
 } from "firebase/firestore";
-import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const config = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
@@ -50,11 +48,6 @@ export function firebaseAuth(): Auth {
 export function firestore(): Firestore {
   init();
   return db;
-}
-
-export function storage(): FirebaseStorage {
-  init();
-  return getStorage(app);
 }
 
 /** fetch hacia /api con el ID token y el token de App Check. */

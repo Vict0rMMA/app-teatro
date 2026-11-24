@@ -4,16 +4,16 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { AuthCard } from "@/components/auth-card";
 import { RequireAuth, useAuth } from "@/components/auth-provider";
-import { FirmaInput } from "@/components/firma-input";
+import { FirmaField } from "@/components/firma/firma-field";
 import { useToast } from "@/components/toast";
 import { Button, Field, Input } from "@/components/ui";
-import { createProfile, uploadFirma } from "@/lib/data";
+import { createProfile } from "@/lib/data";
 
 function Onboarding() {
   const { user, signOut } = useAuth();
   const toast = useToast();
   const [nombre, setNombre] = useState(user?.displayName ?? "");
-  const [firma, setFirma] = useState<Blob | null>(null);
+  const [firma, setFirma] = useState<string | null>(null);
   const [acepta, setAcepta] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -26,8 +26,7 @@ function Onboarding() {
     setError(null);
     setSaving(true);
     try {
-      const firmaPath = firma ? await uploadFirma(user.uid, firma) : null;
-      await createProfile(user.uid, nombre, firmaPath);
+      await createProfile(user.uid, nombre, firma);
       toast.success("Listo", "Ya puedes generar tus planillas.");
     } catch {
       toast.error("No se pudo guardar", "Revisa tu conexión e intenta de nuevo.");
@@ -46,19 +45,14 @@ function Onboarding() {
       }
     >
       <form onSubmit={submit} className="space-y-5">
-        <Field
-          label="Nombre completo"
-          hint="Tal como aparece en los registros de personal. Lo usamos para encontrar tu fila y tus horas."
-        >
-          {(id) => (
-            <Input id={id} autoComplete="name" required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Laura Gómez Restrepo" />
-          )}
+        <Field label="Nombre completo" hint="Tal como aparece en los registros de personal. Lo usamos para encontrar tu fila y tus horas.">
+          {(id) => <Input id={id} autoComplete="name" required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Laura Gómez Restrepo" />}
         </Field>
         <div className="space-y-1.5">
           <p className="text-[13px] font-medium">
-            Firma <span className="font-normal text-faint">(opcional)</span>
+            Firma <span className="font-normal text-faint">(opcional: dibújala o sube una foto)</span>
           </p>
-          <FirmaInput value={firma} onChange={setFirma} onRemove={() => setFirma(null)} onError={(m) => toast.error(m)} />
+          <FirmaField value={firma} onSave={setFirma} onRemove={() => setFirma(null)} />
         </div>
         <label className="flex items-start gap-2.5 text-[13px] text-muted">
           <input type="checkbox" checked={acepta} onChange={(e) => setAcepta(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[rgb(var(--brand))]" />

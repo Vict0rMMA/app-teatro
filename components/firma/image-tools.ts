@@ -1,6 +1,7 @@
 "use client";
 
-export const FIRMA_MAX_BYTES = 2 * 1024 * 1024;
+/** La firma se guarda en base64 dentro de Firestore: máximo 150 KB. */
+export const FIRMA_MAX_BYTES = 150 * 1024;
 
 function toBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
   return new Promise((r) => canvas.toBlob(r, "image/png"));
@@ -26,8 +27,19 @@ export function alphaBounds(img: ImageData, minAlpha = 8) {
   return x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
 
-/** Recorta al contorno (con un pequeño margen) y limita el ancho. Devuelve PNG transparente. */
+/**
+ * Recorta al contorno (con un pequeño margen), limita el ancho y reduce hasta que
+ * el PNG pese menos de 150 KB. Devuelve PNG transparente.
+ */
 export async function trimAndScale(source: HTMLCanvasElement, maxWidth: number): Promise<Blob | null> {
+  for (let w = maxWidth; w >= 200; w = Math.round(w * 0.8)) {
+    const png = await trimAndScaleOnce(source, w);
+    if (!png || png.size <= FIRMA_MAX_BYTES) return png;
+  }
+  return trimAndScaleOnce(source, 200);
+}
+
+async function trimAndScaleOnce(source: HTMLCanvasElement, maxWidth: number): Promise<Blob | null> {
   const ctx = source.getContext("2d", { willReadFrequently: true })!;
   const img = ctx.getImageData(0, 0, source.width, source.height);
   const b = alphaBounds(img);

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleError, requireUser } from "@/lib/api";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { deleteOwned, deleteStoragePrefix } from "@/lib/server-data";
+import { deleteOwned } from "@/lib/server-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,9 +15,8 @@ export async function DELETE(req: Request) {
     // El cliente debe enviar { confirm: "ELIMINAR" }: evita borrados por una llamada accidental.
     z.object({ confirm: z.literal("ELIMINAR") }).parse(await req.json().catch(() => ({})));
 
-    await deleteStoragePrefix(`users/${user.uid}/`);
     for (const c of ["events", "workLogs", "workPlaces", "rateLimits"]) await deleteOwned(c, user.uid);
-    await adminDb().recursiveDelete(adminDb().collection("users").doc(user.uid));
+    await adminDb().recursiveDelete(adminDb().collection("users").doc(user.uid)); // incluye la firma
     await adminAuth().deleteUser(user.uid);
     return NextResponse.json({ ok: true });
   } catch (err) {

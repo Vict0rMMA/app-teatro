@@ -17,14 +17,14 @@ import {
   writeBatch,
   type Timestamp,
 } from "firebase/firestore";
-import { ref, uploadBytes, deleteObject } from "firebase/storage";
-import { firestore, storage } from "./firebase/client";
-import { DEFAULTS, LUGARES_INICIALES } from "./schemas";
+import { firestore } from "./firebase/client";
+import { DEFAULTS, LUGARES_INICIALES, type Defaults, type GenerateInput } from "./schemas";
 
 export interface Profile {
   nombre: string;
-  firmaPath: string | null;
-  defaults: { nota: string; observaciones: string; objetosPerdidos: string };
+  /** PNG en base64 (máx. 150 KB) */
+  firma: string | null;
+  defaults?: Partial<Defaults>;
   privacidadAceptadaEn?: Timestamp;
   createdAt?: Timestamp;
 }
@@ -54,15 +54,19 @@ export interface EventDoc {
   id: string;
   uid: string;
   nombre: string;
+  evento: string;
   fecha: string;
   horaCitacion: string;
   horaEvento: string;
-  aforo: number;
-  nota: string;
+  salida: string;
+  aforo: number | null;
+  notaLlaves: string;
+  evaluacion: GenerateInput["evaluacion"];
   observaciones: string;
   objetosPerdidos: string;
   whatsapp: string;
-  files: Array<{ template: "LLAVES" | "COLILLAS" | "EVALUACION"; name: string; path: string }>;
+  sinFirma?: boolean;
+  firmaEvento?: string | null;
   staffCount: number;
   totalHoras: number;
   totalPagado: number;
@@ -84,6 +88,7 @@ export interface StaffDoc {
   valor: number | null;
   pp: string;
   desempeno: string;
+  observacion?: string;
 }
 
 const db = () => firestore();
@@ -99,11 +104,11 @@ export function watchProfile(uid: string, cb: (p: Profile | null) => void, onErr
 }
 
 /** Crea el perfil y los lugares de trabajo iniciales (primer ingreso). */
-export async function createProfile(uid: string, nombre: string, firmaPath: string | null) {
+export async function createProfile(uid: string, nombre: string, firma: string | null) {
   const batch = writeBatch(db());
   batch.set(doc(db(), "users", uid), {
     nombre: nombre.trim(),
-    firmaPath,
+    firma,
     defaults: DEFAULTS,
     privacidadAceptadaEn: serverTimestamp(),
     createdAt: serverTimestamp(),
@@ -126,16 +131,9 @@ export function updateProfile(uid: string, data: Partial<Profile>) {
   return updateDoc(doc(db(), "users", uid), data);
 }
 
-export const firmaPathFor = (uid: string) => `users/${uid}/firma/firma.png`;
-
-export async function uploadFirma(uid: string, png: Blob) {
-  const path = firmaPathFor(uid);
-  await uploadBytes(ref(storage(), path), png, { contentType: "image/png" });
-  return path;
-}
-
-export async function deleteFirma(uid: string) {
-  await deleteObject(ref(storage(), firmaPathFor(uid))).catch(() => undefined);
+/** Guarda (o quita, con null) la firma en base64 dentro del perfil. */
+export function setFirma(uid: string, base64: string | null) {
+  return updateDoc(doc(db(), "users", uid), { firma: base64, updatedAt: serverTimestamp() });
 }
 
 // ---------- Lugares de trabajo ----------
@@ -214,10 +212,6 @@ export function watchEvent(id: string, cb: (e: EventDoc | null) => void, onError
     (s) => cb(s.exists() ? ({ id: s.id, ...(s.data() as Omit<EventDoc, "id">) }) : null),
     (e) => onError?.(e),
   );
-}
-
-export function updateEventSummary(id: string, data: Pick<EventDoc, "aforo" | "observaciones" | "objetosPerdidos" | "whatsapp">) {
-  return updateDoc(doc(db(), "events", id), data);
 }
 
 export async function getStaff(eventId: string): Promise<StaffDoc[]> {

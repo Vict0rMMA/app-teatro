@@ -1,18 +1,17 @@
 "use client";
 
-import { getDownloadURL, ref } from "firebase/storage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useSession } from "@/components/auth-provider";
-import { FirmaInput } from "@/components/firma-input";
+import { FirmaField } from "@/components/firma/firma-field";
 import { filenameFrom, saveBlob, usePlaces } from "@/components/hooks";
 import { IconCheck, IconDownload, IconPencil, IconPlus, IconTrash, IconX } from "@/components/icons";
 import { useToast } from "@/components/toast";
 import { Button, Card, CardHeader, Field, Input, Modal, PageHeader, Textarea } from "@/components/ui";
-import { addPlace, deleteFirma, deletePlace, placeInUse, renamePlace, updateProfile, uploadFirma } from "@/lib/data";
-import { apiFetch, apiJson, storage } from "@/lib/firebase/client";
-import { DEFAULTS } from "@/lib/schemas";
+import { addPlace, deletePlace, placeInUse, renamePlace, setFirma, updateProfile } from "@/lib/data";
+import { apiFetch, apiJson } from "@/lib/firebase/client";
+import { withDefaults, type Defaults } from "@/lib/schemas";
 
 export default function AjustesPage() {
   return (
@@ -32,25 +31,14 @@ function PerfilCard() {
   const { user, profile } = useSession();
   const toast = useToast();
   const [nombre, setNombre] = useState(profile.nombre);
-  const [firma, setFirma] = useState<Blob | null>(null);
-  const [firmaUrl, setFirmaUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!profile.firmaPath) return setFirmaUrl(null);
-    getDownloadURL(ref(storage(), profile.firmaPath))
-      .then(setFirmaUrl)
-      .catch(() => setFirmaUrl(null));
-  }, [profile.firmaPath]);
 
   async function save(e: FormEvent) {
     e.preventDefault();
     if (nombre.trim().split(/\s+/).length < 2) return toast.error("Escribe tu nombre y al menos un apellido.");
     setSaving(true);
     try {
-      const firmaPath = firma ? await uploadFirma(user.uid, firma) : profile.firmaPath;
-      await updateProfile(user.uid, { nombre: nombre.trim(), firmaPath });
-      setFirma(null);
+      await updateProfile(user.uid, { nombre: nombre.trim() });
       toast.success("Perfil actualizado");
     } catch {
       toast.error("No se pudo guardar el perfil");
@@ -59,36 +47,37 @@ function PerfilCard() {
     }
   }
 
-  async function quitarFirma() {
-    if (firma) return setFirma(null);
-    try {
-      await deleteFirma(user.uid);
-      await updateProfile(user.uid, { firmaPath: null });
-      toast.success("Firma eliminada", "Las próximas planillas saldrán con el espacio en blanco.");
-    } catch {
-      toast.error("No se pudo quitar la firma");
-    }
-  }
-
-  const dirty = nombre.trim() !== profile.nombre || !!firma;
-
   return (
     <Card>
       <CardHeader title="Perfil" description="Tu nombre y tu firma aparecen en LLAVES, COLILLAS y EVALUACIÓN." />
-      <form onSubmit={save} className="grid gap-5 p-4 sm:p-5">
-        <Field label="Nombre completo" hint="Igual que en los registros de personal, para encontrar tu fila automáticamente.">
-          {(id) => <Input id={id} value={nombre} onChange={(e) => setNombre(e.target.value)} />}
-        </Field>
-        <div className="space-y-1.5">
-          <p className="text-[13px] font-medium">Firma</p>
-          <FirmaInput currentUrl={firmaUrl} value={firma} onChange={setFirma} onRemove={firma || firmaUrl ? quitarFirma : undefined} onError={(m) => toast.error(m)} />
-        </div>
-        <div className="flex justify-end">
-          <Button type="submit" variant="primary" loading={saving} disabled={!dirty}>
+      <div className="grid gap-5 p-4 sm:p-5">
+        <form onSubmit={save} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <Field label="Nombre completo" hint="Igual que en los registros de personal, para encontrar tu fila automáticamente." className="flex-1">
+            {(id) => <Input id={id} value={nombre} onChange={(e) => setNombre(e.target.value)} />}
+          </Field>
+          <Button type="submit" variant="primary" loading={saving} disabled={nombre.trim() === profile.nombre}>
             Guardar
           </Button>
+        </form>
+        <div className="space-y-1.5">
+          <p className="text-[13px] font-medium">Firma</p>
+          <FirmaField
+            value={profile.firma ?? null}
+            onSave={async (b64) => {
+              try {
+                await setFirma(user.uid, b64);
+                toast.success("Firma guardada");
+              } catch {
+                toast.error("No se pudo guardar la firma");
+              }
+            }}
+            onRemove={async () => {
+              await setFirma(user.uid, null);
+              toast.success("Firma eliminada", "Las próximas planillas saldrán con el espacio en blanco.");
+            }}
+          />
         </div>
-      </form>
+      </div>
     </Card>
   );
 }
@@ -96,14 +85,16 @@ function PerfilCard() {
 function DefaultsCard() {
   const { user, profile } = useSession();
   const toast = useToast();
-  const [d, setD] = useState(profile.defaults ?? DEFAULTS);
+  const [d, setD] = useState<Defaults>(withDefaults(profile.defaults));
   const [saving, setSaving] = useState(false);
+  const set = (k: keyof Defaults, v: string) => setD({ ...d, [k]: v });
 
   async function save(e: FormEvent) {
     e.preventDefault();
+    if (!Number.isFinite(d.valorHora) || d.valorHora < 0) return toast.error("El valor por hora no es válido.");
     setSaving(true);
     try {
-      await updateProfile(user.uid, { defaults: { nota: d.nota.trim(), observaciones: d.observaciones.trim(), objetosPerdidos: d.objetosPerdidos.trim() } });
+      await updateProfile(user.uid, { defaults: d });
       toast.success("Valores por defecto guardados");
     } catch {
       toast.error("No se pudieron guardar");
@@ -116,14 +107,23 @@ function DefaultsCard() {
     <Card>
       <CardHeader title="Valores por defecto" description="Se rellenan solos en cada planilla nueva; puedes cambiarlos ahí mismo." />
       <form onSubmit={save} className="grid gap-4 p-4 sm:p-5">
-        <Field label="Nota">{(id) => <Textarea id={id} rows={2} value={d.nota} onChange={(e) => setD({ ...d, nota: e.target.value })} />}</Field>
+        <Field label="Valor por hora" hint="VALOR PAGADO = horas × este valor.">
+          {(id) => (
+            <Input
+              id={id}
+              inputMode="numeric"
+              className="tabular sm:w-48"
+              value={d.valorHora ? String(d.valorHora) : ""}
+              onChange={(e) => setD({ ...d, valorHora: Number(e.target.value.replace(/\D/g, "")) || 0 })}
+            />
+          )}
+        </Field>
+        <Field label="Nota (LLAVES y viñeta de EVALUACIÓN)">{(id) => <Textarea id={id} rows={2} value={d.nota} onChange={(e) => set("nota", e.target.value)} />}</Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Observaciones">
-            {(id) => <Textarea id={id} rows={2} value={d.observaciones} onChange={(e) => setD({ ...d, observaciones: e.target.value })} />}
-          </Field>
-          <Field label="Objetos perdidos">
-            {(id) => <Textarea id={id} rows={2} value={d.objetosPerdidos} onChange={(e) => setD({ ...d, objetosPerdidos: e.target.value })} />}
-          </Field>
+          <Field label="Reclamos y sugerencias del público">{(id) => <Textarea id={id} rows={2} value={d.reclamos} onChange={(e) => set("reclamos", e.target.value)} />}</Field>
+          <Field label="Sugerencias del coordinador">{(id) => <Textarea id={id} rows={2} value={d.sugerencias} onChange={(e) => set("sugerencias", e.target.value)} />}</Field>
+          <Field label="Observaciones (WhatsApp)">{(id) => <Textarea id={id} rows={2} value={d.observaciones} onChange={(e) => set("observaciones", e.target.value)} />}</Field>
+          <Field label="Objetos perdidos (WhatsApp)">{(id) => <Textarea id={id} rows={2} value={d.objetosPerdidos} onChange={(e) => set("objetosPerdidos", e.target.value)} />}</Field>
         </div>
         <div className="flex justify-end">
           <Button type="submit" variant="primary" loading={saving}>

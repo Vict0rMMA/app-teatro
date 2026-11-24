@@ -2,18 +2,25 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import PizZip from "pizzip";
 import { useCallback, useEffect, useState } from "react";
 import { DocxPreview } from "@/components/docx-preview";
 import { filenameFrom, saveBlob } from "@/components/hooks";
-import { IconCheck, IconCopy, IconDownload, IconEye, IconFile, IconTrash, IconWhatsapp } from "@/components/icons";
+import { IconAlert, IconCheck, IconCopy, IconDownload, IconEye, IconFile, IconTrash, IconWhatsapp } from "@/components/icons";
 import { useToast } from "@/components/toast";
 import { Badge, Button, Card, CardHeader, EmptyState, Modal, Skeleton, Stat, cx } from "@/components/ui";
 import { getStaff, watchEvent, type EventDoc, type StaffDoc } from "@/lib/data";
 import { apiFetch, apiJson } from "@/lib/firebase/client";
 import { fechaWhatsapp, formatCOP, formatHoras, hora12 } from "@/lib/format";
+import { leerRegistro } from "@/lib/registro-memoria";
 
-const KEY = { LLAVES: "llaves", COLILLAS: "colillas", EVALUACION: "evaluacion" } as const;
-const LABEL = { LLAVES: "Llaves", COLILLAS: "Colillas", EVALUACION: "Evaluación" } as const;
+type Key = "registro" | "llaves" | "colillas" | "evaluacion";
+const FILES: Array<{ key: Key; label: string }> = [
+  { key: "registro", label: "Registro" },
+  { key: "llaves", label: "Llaves" },
+  { key: "colillas", label: "Colillas" },
+  { key: "evaluacion", label: "Evaluación" },
+];
 
 async function fetchFile(eventId: string, file: string) {
   const res = await apiFetch(`/api/planillas/${eventId}/${file}`);
@@ -32,18 +39,37 @@ export default function PlanillaPage() {
   const [staff, setStaff] = useState<StaffDoc[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [preview, setPreview] = useState<keyof typeof KEY | null>(null);
+  const [preview, setPreview] = useState<Key | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // REGISTRO completo (con cédulas y teléfonos): solo existe en memoria justo después de generar.
+  const [completo] = useState(() => leerRegistro(id));
 
   useEffect(() => watchEvent(id, setEvent, () => setEvent(null)), [id]);
   useEffect(() => {
     getStaff(id).then(setStaff).catch(() => setStaff([]));
   }, [id]);
 
-  async function download(file: string) {
-    setBusy(file);
+  const getFile = useCallback(
+    async (key: Key) => {
+      if (key === "registro" && completo) return { blob: completo.blob, name: completo.name };
+      return fetchFile(id, key);
+    },
+    [id, completo],
+  );
+
+  async function download(key: Key | "zip") {
+    setBusy(key);
     try {
-      const { blob, name } = await fetchFile(id, file);
+      if (key === "zip") {
+        const { blob, name } = await fetchFile(id, "zip");
+        if (!completo) return saveBlob(blob, name);
+        // Reemplaza el registro regenerado por el completo que está en memoria.
+        const zip = new PizZip(await blob.arrayBuffer());
+        Object.keys(zip.files).filter((n) => n.startsWith("REGISTRO_")).forEach((n) => zip.remove(n));
+        zip.file(completo.name, await completo.blob.arrayBuffer());
+        return saveBlob(zip.generate({ type: "blob", compression: "DEFLATE" }) as Blob, name);
+      }
+      const { blob, name } = await getFile(key);
       saveBlob(blob, name);
     } catch (e) {
       toast.error("Error al descargar", (e as Error).message);
@@ -81,7 +107,7 @@ export default function PlanillaPage() {
     }
   }
 
-  const loadPreview = useCallback(async () => (await fetchFile(id, KEY[preview ?? "LLAVES"])).blob, [id, preview]);
+  const loadPreview = useCallback(async () => (await getFile(preview ?? "llaves")).blob, [getFile, preview]);
 
   if (event === undefined) {
     return (
@@ -109,7 +135,7 @@ export default function PlanillaPage() {
     );
   }
 
-  const files = [...event.files].sort((a, b) => Object.keys(KEY).indexOf(a.template) - Object.keys(KEY).indexOf(b.template));
+  const sinFirma = completo?.sinFirma ?? event.sinFirma;
 
   return (
     <div className="animate-fade-up">
@@ -128,24 +154,51 @@ export default function PlanillaPage() {
         </Button>
       </div>
 
+      {(sinFirma || (completo?.alertas.length ?? 0) > 0) && (
+        <div className="mb-5 space-y-1 rounded-lg border border-warn/25 bg-warn/5 px-4 py-3 text-[13px]">
+          {sinFirma && (
+            <p className="flex gap-2">
+              <IconAlert className="mt-0.5 shrink-0 text-warn" width={14} height={14} />
+              <span>
+                Las planillas salieron sin firma.{" "}
+                <Link href="/ajustes" className="font-medium underline underline-offset-2">
+                  Agrega tu firma en Ajustes
+                </Link>{" "}
+                y vuelve a descargarlas: se regeneran con ella.
+              </span>
+            </p>
+          )}
+          {completo?.alertas.map((a) => (
+            <p key={a} className="flex gap-2">
+              <IconAlert className="mt-0.5 shrink-0 text-warn" width={14} height={14} />
+              {a}
+            </p>
+          ))}
+        </div>
+      )}
+
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         <div className="space-y-5">
           <Card>
             <CardHeader title="Archivos" description="Generados desde las plantillas originales del Teatro." />
             <ul className="divide-y divide-border">
-              {files.map((f) => (
-                <li key={f.template} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+              {FILES.map((f) => (
+                <li key={f.key} className="flex items-center gap-3 px-4 py-3 sm:px-5">
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-border bg-subtle text-muted">
                     <IconFile />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium">{LABEL[f.template]}</p>
-                    <p className="truncate font-mono text-[11px] text-faint">{f.name}</p>
+                    <p className="text-[13px] font-medium">{f.label}</p>
+                    {f.key === "registro" && (
+                      <p className="text-[11px] text-faint">
+                        {completo ? "Completo, con cédulas y teléfonos. No se guarda: descárgalo ahora." : "Regenerado sin cédulas ni teléfonos (no se guardan)."}
+                      </p>
+                    )}
                   </div>
-                  <Button size="sm" variant="ghost" icon={<IconEye />} onClick={() => setPreview(f.template)}>
+                  <Button size="sm" variant="ghost" icon={<IconEye />} onClick={() => setPreview(f.key)}>
                     <span className="hidden sm:inline">Previsualizar</span>
                   </Button>
-                  <Button size="sm" icon={<IconDownload />} loading={busy === KEY[f.template]} onClick={() => download(KEY[f.template])}>
+                  <Button size="sm" icon={<IconDownload />} loading={busy === f.key} onClick={() => download(f.key)}>
                     <span className="hidden sm:inline">Descargar</span>
                   </Button>
                 </li>
@@ -154,10 +207,7 @@ export default function PlanillaPage() {
           </Card>
 
           <Card>
-            <CardHeader
-              title="Personal del evento"
-              description={staff ? `${staff.length} personas` : "Cargando…"}
-            />
+            <CardHeader title="Personal del evento" description={staff ? `${staff.length} personas` : "Cargando…"} />
             {staff === null ? (
               <div className="space-y-2 p-5">
                 <Skeleton className="h-4 w-full" />
@@ -167,14 +217,15 @@ export default function PlanillaPage() {
               <p className="px-5 py-6 text-center text-[13px] text-muted">Esta planilla se generó sin lista de personal.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[560px] text-[13px]">
+                <table className="w-full min-w-[620px] text-[13px]">
                   <thead>
                     <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-faint">
                       <th className="py-2 pl-5 font-medium">Nombre</th>
                       <th className="py-2 font-medium">Cargo</th>
                       <th className="py-2 font-medium">Horario</th>
                       <th className="py-2 text-right font-medium">Horas</th>
-                      <th className="py-2 pr-5 text-right font-medium">Valor</th>
+                      <th className="py-2 text-right font-medium">Valor</th>
+                      <th className="py-2 pr-5 text-right font-medium">P.P / Desemp.</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -182,11 +233,12 @@ export default function PlanillaPage() {
                       <tr key={s.id} className="border-b border-border/60 last:border-0">
                         <td className="py-2 pl-5">{s.nombre}</td>
                         <td className="py-2">{s.cargo ? <Badge tone={s.cargo === "C" ? "brand" : "neutral"}>{s.cargo}</Badge> : "—"}</td>
-                        <td className="tabular py-2 text-muted">
-                          {s.llegada ? `${hora12(s.llegada, true)} – ${hora12(s.salida, true)}` : "—"}
-                        </td>
+                        <td className="tabular py-2 text-muted">{s.llegada ? `${hora12(s.llegada, true)} – ${hora12(s.salida, true)}` : "—"}</td>
                         <td className="tabular py-2 text-right">{formatHoras(s.horas)}</td>
-                        <td className="tabular py-2 pr-5 text-right">{formatCOP(s.valor)}</td>
+                        <td className="tabular py-2 text-right">{formatCOP(s.valor)}</td>
+                        <td className="tabular py-2 pr-5 text-right text-muted">
+                          {s.pp || "—"} / {s.desempeno || "—"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -196,7 +248,8 @@ export default function PlanillaPage() {
                         Total
                       </td>
                       <td className="tabular py-2.5 text-right">{formatHoras(event.totalHoras)}</td>
-                      <td className="tabular py-2.5 pr-5 text-right">{formatCOP(event.totalPagado)}</td>
+                      <td className="tabular py-2.5 text-right">{formatCOP(event.totalPagado)}</td>
+                      <td />
                     </tr>
                   </tfoot>
                 </table>
@@ -231,14 +284,18 @@ export default function PlanillaPage() {
           </Card>
 
           <div className="grid grid-cols-2 gap-3">
-            <Stat label="Aforo" value={event.aforo.toLocaleString("es-CO")} sub="personas" />
+            <Stat label="Aforo" value={event.aforo != null ? event.aforo.toLocaleString("es-CO") : "____"} sub="personas" />
             <Stat label="Pagado al personal" value={formatCOP(event.totalPagado)} sub={`${formatHoras(event.totalHoras)} horas`} />
           </div>
 
-          {event.nota && (
+          {event.evaluacion?.notas?.length > 0 && (
             <Card className="px-4 py-3 sm:px-5">
-              <p className="text-xs text-muted">Nota</p>
-              <p className="mt-1 text-[13px]">{event.nota}</p>
+              <p className="text-xs text-muted">Notas</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[13px]">
+                {event.evaluacion.notas.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
             </Card>
           )}
 
@@ -248,18 +305,15 @@ export default function PlanillaPage() {
         </div>
       </div>
 
-      <Modal open={!!preview} onClose={() => setPreview(null)} title={preview ? `Previsualizar · ${LABEL[preview]}` : ""} wide>
-        <div className="mb-3 flex gap-1">
-          {files.map((f) => (
+      <Modal open={!!preview} onClose={() => setPreview(null)} title={preview ? `Previsualizar · ${FILES.find((f) => f.key === preview)?.label}` : ""} wide>
+        <div className="mb-3 flex flex-wrap gap-1">
+          {FILES.map((f) => (
             <button
-              key={f.template}
-              onClick={() => setPreview(f.template)}
-              className={cx(
-                "rounded-md px-2.5 py-1 text-[13px]",
-                preview === f.template ? "bg-subtle font-medium text-fg" : "text-muted hover:text-fg",
-              )}
+              key={f.key}
+              onClick={() => setPreview(f.key)}
+              className={cx("rounded-md px-2.5 py-1 text-[13px]", preview === f.key ? "bg-subtle font-medium text-fg" : "text-muted hover:text-fg")}
             >
-              {LABEL[f.template]}
+              {f.label}
             </button>
           ))}
         </div>
@@ -280,8 +334,7 @@ export default function PlanillaPage() {
         }
       >
         <p className="text-sm text-muted">
-          Se borran los tres archivos y la lista de personal de <span className="font-medium text-fg">{event.nombre}</span>. Las horas
-          que guardaste en Mis horas se conservan.
+          Se borran los datos y la lista de personal de <span className="font-medium text-fg">{event.nombre}</span>. Las horas que guardaste en Mis horas se conservan.
         </p>
       </Modal>
     </div>

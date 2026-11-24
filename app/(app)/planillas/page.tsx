@@ -93,7 +93,7 @@ export default function HistorialPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{e.nombre}</p>
                         <p className="tabular text-xs text-faint">
-                          {e.staffCount} personas · {formatHoras(e.totalHoras)} h · aforo {e.aforo}
+                          {e.staffCount} personas · {formatHoras(e.totalHoras)} h · aforo {e.aforo ?? "—"}
                         </p>
                       </div>
                       <div className="tabular hidden text-right text-[13px] sm:block">{formatCOP(e.totalPagado)}</div>

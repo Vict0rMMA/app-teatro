@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Cada coordinador solo ve y modifica documentos con su uid.
+// Plan Spark (sin Storage). Cada coordinador solo ve y modifica documentos con su uid.
 // "events" y su "staff" los crea el servidor (firebase-admin) al generar planillas.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -35,27 +35,26 @@ service cloud.firestore {
         && (d.horas == null || (d.horas is number && d.horas >= 0 && d.horas <= 24))
         && (d.valor == null || (d.valor is number && d.valor >= 0));
     }
+    // Firma: PNG en base64 (máx. 150 KB ≈ 205.000 caracteres).
+    function validProfile(d) {
+      return d.keys().hasOnly(['nombre', 'firma', 'defaults', 'privacidadAceptadaEn', 'createdAt', 'updatedAt'])
+        && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 120
+        && (!('firma' in d) || d.firma == null || (d.firma is string && d.firma.size() <= 205000))
+        && (!('defaults' in d) || d.defaults is map);
+    }
 
     match /users/{uid} {
       allow read, delete: if isOwner(uid);
-      allow create, update: if isOwner(uid)
-        && request.resource.data.nombre is string
-        && request.resource.data.nombre.size() > 0
-        && request.resource.data.nombre.size() <= 120
-        && (request.resource.data.firmaPath == null
-            || request.resource.data.firmaPath == 'users/' + uid + '/firma/firma.png');
+      allow create, update: if isOwner(uid) && validProfile(request.resource.data);
     }
 
     match /events/{eventId} {
-      allow read, delete: if owns();
-      // Solo se pueden editar los textos del resumen; los archivos los gestiona el servidor.
-      allow update: if owns() && keepsOwner()
-        && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['aforo', 'observaciones', 'objetosPerdidos', 'whatsapp']);
-      allow create: if false;
+      allow read: if owns();
+      // Crear y borrar lo hace el servidor (borra también el personal).
+      allow create, update, delete: if false;
 
       match /staff/{staffId} {
-        allow read, delete: if owns();
+        allow read: if owns();
         allow write: if false;
       }
     }

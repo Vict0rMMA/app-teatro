@@ -11,3 +11,6 @@ coverage/
 samples/real/
 firebase-debug.log
 *-debug.log
+
+.vercel
+.env*

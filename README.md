@@ -1,8 +1,11 @@
 # Planillas Teatro
 
-Genera las planillas **LLAVES**, **COLILLAS** y **EVALUACIÓN** a partir del registro de personal (.docx o .pdf) y lleva el control de horas de cada coordinador del Teatro Universidad de Medellín.
+Genera el **REGISTRO** completado y las planillas **LLAVES**, **COLILLAS** y **EVALUACIÓN** a partir del registro de personal (.docx o .pdf), y lleva el control de horas de cada coordinador del Teatro Universidad de Medellín.
 
-Next.js 14 (App Router) · TypeScript · Tailwind · Firebase (Auth, Firestore, Storage) · docxtemplater · Vercel.
+Next.js 14 (App Router) · TypeScript · Tailwind · Firebase Auth + Firestore (plan **Spark**, costo cero) · docxtemplater · Vercel.
+
+- Producción: https://app-teatro-zeta.vercel.app
+- Firebase: proyecto `forma-ai-victor` (nombre visible "Planillas Teatro")
 
 ## Desarrollo
 
@@ -10,62 +13,73 @@ Next.js 14 (App Router) · TypeScript · Tailwind · Firebase (Auth, Firestore, 
 npm install
 cp .env.example .env.local   # completar variables
 npm run dev                  # http://localhost:3000
-npm test                     # parsers y generación de planillas
+npm test                     # parsers, cálculo y generación de planillas
 ```
 
-## Firebase (una vez)
+## Costo cero (Spark)
 
-1. Crear proyecto en https://console.firebase.google.com (plan **Blaze**: Storage lo exige en proyectos nuevos; el uso de este proyecto cabe en la cuota gratuita).
-2. **Authentication** → Métodos de acceso: habilitar *Correo/contraseña* y *Google*. En *Configuración → Dominios autorizados* agregar el dominio de Vercel (`planillas-teatro.vercel.app` y el dominio propio si hay).
-3. **Firestore Database** → Crear base de datos (modo producción, región `southamerica-east1` o `us-central1`).
-4. **Storage** → Comenzar.
-5. *Configuración del proyecto → Tus apps* → agregar app **Web** → copiar los valores a `NEXT_PUBLIC_FIREBASE_*`.
-6. *Configuración del proyecto → Cuentas de servicio* → **Generar nueva clave privada** → copiar `project_id`, `client_email` y `private_key` a `FIREBASE_*`.
-7. Publicar reglas e índices:
+- No se usa Firebase Storage. La firma se guarda como PNG en base64 en `users/{uid}.firma` (máx. 150 KB, recortada y comprimida en el navegador).
+- Los .docx no se guardan: el evento guarda sus datos (aforo, horas, notas, evaluación, personal sin cédula ni teléfono) y los archivos se regeneran al descargar.
+- El REGISTRO completo (con cédulas y teléfonos) se entrega una sola vez al generar; en el historial se regenera sin esos datos.
+- Login: Google, Microsoft y correo/contraseña. Sin SMS.
+
+## Firebase
+
+1. **Authentication → Método de acceso**: Correo/contraseña (activo), **Google** (activar en la consola) y **Microsoft** (requiere registrar una app en Azure: *Microsoft Entra ID → Registros de aplicaciones*, tipo de cuenta "cualquier directorio y cuentas personales", URI de redirección `https://forma-ai-victor.firebaseapp.com/__/auth/handler`; copiar el ID y el secreto en Firebase).
+2. **Authentication → Configuración → Dominios autorizados**: `app-teatro-zeta.vercel.app` y `localhost` (ya agregados).
+3. Reglas e índices:
    ```bash
-   npm i -g firebase-tools
-   firebase login
-   firebase use --add            # elegir el proyecto
-   firebase deploy --only firestore:rules,firestore:indexes,storage
+   firebase deploy --only firestore:rules,firestore:indexes --project forma-ai-victor
    ```
-8. (Recomendado) **App Check**: registrar la app web con reCAPTCHA v3, poner la clave del sitio en `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, y cuando todo funcione activar *Aplicar* para Firestore y Storage y `APP_CHECK_ENFORCE=true`.
+4. (Opcional) **App Check** con reCAPTCHA v3: poner la clave en `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` y, cuando funcione, `APP_CHECK_ENFORCE=true`.
 
 ## Variables de entorno (Vercel → Settings → Environment Variables)
 
 | Variable | Dónde se obtiene |
 | --- | --- |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` `…_AUTH_DOMAIN` `…_PROJECT_ID` `…_STORAGE_BUCKET` `…_MESSAGING_SENDER_ID` `…_APP_ID` | App web de Firebase |
-| `FIREBASE_PROJECT_ID` `FIREBASE_CLIENT_EMAIL` `FIREBASE_PRIVATE_KEY` | JSON de la cuenta de servicio |
-| `FIREBASE_STORAGE_BUCKET` | Igual que `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` `…_AUTH_DOMAIN` `…_PROJECT_ID` `…_MESSAGING_SENDER_ID` `…_APP_ID` | App web de Firebase |
+| `FIREBASE_PROJECT_ID` `FIREBASE_CLIENT_EMAIL` `FIREBASE_PRIVATE_KEY` | Clave de la cuenta de servicio (`FIREBASE_PRIVATE_KEY` completa, con los `\n`) |
 | `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` `APP_CHECK_ENFORCE` | App Check (opcional) |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Contacto del aviso de privacidad |
 
-`FIREBASE_PRIVATE_KEY` se pega completa, con los `\n`.
-
 ## Deploy
 
-El deploy lo hace GitHub Actions (`.github/workflows/ci.yml`): en cada push corre lint, tipos y pruebas, y si pasan y la rama es `main`, publica en Vercel. El deploy automático por Git de Vercel está apagado en `vercel.json` para que nada se publique sin pasar las pruebas.
+Vercel está conectado al repo: cada push a `main` despliega. El build corre `npm test && npm run build` (`vercel.json`), así que **si una prueba falla no se publica**. GitHub Actions corre lint, tipos y pruebas en cada push.
 
-```bash
-npm i -g vercel
-vercel link                         # crea .vercel/project.json
-cat .vercel/project.json            # orgId y projectId
-```
-
-En GitHub → *Settings → Secrets and variables → Actions* crear `VERCEL_TOKEN` (https://vercel.com/account/tokens), `VERCEL_ORG_ID` y `VERCEL_PROJECT_ID`. Las variables de Firebase van en Vercel (el workflow las baja con `vercel pull`).
-
-Deploy manual: `vercel --prod`.
+Manual: `vercel --prod`.
 
 ## Plantillas
 
-`templates/*.docx` son las plantillas originales del Teatro con marcadores de docxtemplater (`{{evento}}`, `{{fecha}}`, `{{horaEvento}}`, `{{horaCitacion}}`, `{{coordinador}}`, `{{nota}}`, `{{aforo}}`, `{{%firma}}`). Para regenerarlas desde los originales:
+`templates/*.docx` son las plantillas del Teatro con marcadores de docxtemplater (`{{evento}}`, `{{fecha}}`, `{{horaEvento}}`, `{{horaCitacion}}`, `{{coordinador}}`, `{{nota}}`, `{{aforo}}`, `{{%firma}}`, `{{#notas}}`, `{{#personal}}`…). Para regenerarlas desde los originales:
 
 ```bash
-node scripts/build-templates.mjs ruta/a/originales   # LLAVES.docx, COLILLAS.docx, EVALUACION.docx
+node scripts/build-templates.mjs ruta/a/originales   # LLAVES, COLILLAS, EVALUACION y REGISTRO .docx
 ```
 
 `samples/` contiene solo datos ficticios. `samples/real/` está en `.gitignore`.
 
+## Reglas del registro
+
+- SALIDA igual para todos = citación + horas del grupo más numeroso (editable).
+- LLEGADA = SALIDA − horas de cada persona. VALOR = horas × valor por hora (Ajustes, por defecto $10.000).
+- P.P y DESEMP = 5 por defecto. Sin horas en el archivo: C 6 h, AC 5 h, resto 4 h (con aviso).
+- Nombre, cédula, teléfono, UBI y cargo del archivo no se modifican.
+
+## Pruebas manuales del lienzo de firma
+
+Marcar cada combinación antes de publicar cambios en `components/firma/`:
+
+| Dispositivo | Navegador | Entrada | Verificar |
+| --- | --- | --- | --- |
+| iPad | Safari, Chrome | dedo, Apple Pencil | no hace scroll al firmar; la palma no pinta con el lápiz; grosor varía con la presión |
+| iPhone | Safari, Chrome | dedo | sin zoom por doble toque; sin menú al mantener pulsado |
+| Mac | Safari, Chrome, Firefox | mouse, trackpad | trazo suave; deshacer y borrar |
+| Tablet Android (Samsung, Xiaomi, Lenovo, Huawei) | Chrome, Samsung Internet, Firefox | dedo, S Pen | palma ignorada con S Pen; presión del S Pen |
+| Celular Android | Chrome, Samsung Internet | dedo | girar la pantalla no borra el trazo |
+| Tablet Windows / Chromebook | Chrome, Edge | lápiz, táctil, mouse | presión con lápiz; redimensionar ventana conserva el trazo |
+
+En todos: la vista previa sale con fondo transparente y recortada; "Subir imagen" quita el fondo con el control deslizante; "Tomar foto" abre la cámara en el celular; el PNG guardado pesa menos de 150 KB.
+
 ## Privacidad
 
-El archivo subido se procesa en memoria y no se guarda. Cédulas y teléfonos nunca salen del servidor ni se almacenan. Cada usuario puede exportar todos sus datos (JSON) o eliminar su cuenta desde Ajustes (Ley 1581 de 2012).
+El archivo subido se procesa en memoria y no se guarda. Cédulas y teléfonos nunca se almacenan. Cada usuario puede exportar todos sus datos (JSON) o eliminar su cuenta desde Ajustes (Ley 1581 de 2012).
