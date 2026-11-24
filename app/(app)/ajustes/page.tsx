@@ -21,6 +21,7 @@ export default function AjustesPage() {
         <PerfilCard />
         <DefaultsCard />
         <UbicacionesCard />
+        <CoordinadoresCard />
         <LugaresCard />
         <DatosCard />
       </div>
@@ -96,7 +97,9 @@ function DefaultsCard() {
     setSaving(true);
     try {
       // Las ubicaciones se editan en su propia tarjeta: se conservan las actuales.
-      await updateProfile(user.uid, { defaults: { ...d, ubicaciones: withDefaults(profile.defaults).ubicaciones } });
+      await updateProfile(user.uid, {
+        defaults: { ...d, ubicaciones: withDefaults(profile.defaults).ubicaciones, coordinadores: withDefaults(profile.defaults).coordinadores },
+      });
       toast.success("Valores por defecto guardados");
     } catch {
       toast.error("No se pudieron guardar");
@@ -202,6 +205,66 @@ function UbicacionesCard() {
         <div className="mt-3 flex items-center justify-between">
           <Button type="button" size="sm" variant="ghost" icon={<IconPlus />} onClick={() => setRows([...rows, { letra: "", nombre: "" }])}>
             Agregar ubicación
+          </Button>
+          <Button type="submit" variant="primary" loading={saving}>
+            Guardar
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+/** Coordinadores por grupo (OPC, TEATRO…) para "¿a quién le trabajaste?" en Mis horas. */
+function CoordinadoresCard() {
+  const { user, profile } = useSession();
+  const toast = useToast();
+  const inicial = Object.entries(withDefaults(profile.defaults).coordinadores).map(([grupo, nombres]) => ({ grupo, nombres: nombres.join("\n") }));
+  const [grupos, setGrupos] = useState(inicial);
+  const [saving, setSaving] = useState(false);
+  const setG = (i: number, patch: Partial<{ grupo: string; nombres: string }>) => setGrupos(grupos.map((g, j) => (j === i ? { ...g, ...patch } : g)));
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    const limpio = grupos
+      .map((g) => ({ grupo: g.grupo.trim().toUpperCase(), nombres: g.nombres.split("\n").map((n) => n.trim()).filter(Boolean) }))
+      .filter((g) => g.grupo && g.nombres.length);
+    setSaving(true);
+    try {
+      await updateProfile(user.uid, { defaults: { ...withDefaults(profile.defaults), coordinadores: Object.fromEntries(limpio.map((g) => [g.grupo, g.nombres])) } });
+      toast.success("Coordinadores guardados");
+    } catch {
+      toast.error("No se pudieron guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader title="Coordinadores" description="Para elegir a quién le trabajaste en Mis horas. Un nombre por línea." />
+      <form onSubmit={save} className="p-4 sm:p-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {grupos.map((g, i) => (
+            <div key={i} className="space-y-2 rounded-md border border-border p-3">
+              <div className="flex items-center gap-2">
+                <Input value={g.grupo} maxLength={30} placeholder="Grupo (ej. OPC)" className="font-bold uppercase" onChange={(e) => setG(i, { grupo: e.target.value })} aria-label={`Grupo ${i + 1}`} />
+                <button
+                  type="button"
+                  onClick={() => setGrupos(grupos.filter((_, j) => j !== i))}
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded text-faint hover:bg-subtle hover:text-danger"
+                  aria-label={`Quitar grupo ${i + 1}`}
+                >
+                  <IconTrash width={14} height={14} />
+                </button>
+              </div>
+              <Textarea rows={5} value={g.nombres} placeholder={"Valeria Areiza\nValentina Maya"} onChange={(e) => setG(i, { nombres: e.target.value })} aria-label={`Coordinadores de ${g.grupo || "este grupo"}`} />
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <Button type="button" size="sm" variant="ghost" icon={<IconPlus />} onClick={() => setGrupos([...grupos, { grupo: "", nombres: "" }])}>
+            Agregar grupo
           </Button>
           <Button type="submit" variant="primary" loading={saving}>
             Guardar

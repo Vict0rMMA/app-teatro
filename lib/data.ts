@@ -47,6 +47,8 @@ export interface WorkLog {
   horas: number | null;
   valor: number | null;
   origen: "archivo" | "manual";
+  /** coordinador para quien se trabajó (opcional) */
+  paraQuien?: string | null;
   pendiente?: boolean;
 }
 

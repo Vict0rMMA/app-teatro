@@ -67,6 +67,8 @@ export interface Defaults {
   extraC: number;
   /** significado de la columna UBI (letra → nombre). Solo informativo. */
   ubicaciones: Record<string, string>;
+  /** coordinadores por grupo, para elegir "¿a quién le trabajaste?" en Mis horas */
+  coordinadores: Record<string, string[]>;
 }
 
 export const DEFAULTS: Defaults = {
@@ -79,10 +81,19 @@ export const DEFAULTS: Defaults = {
   extraAC: 1,
   extraC: 2,
   ubicaciones: { S: "Seguidores" },
+  coordinadores: {
+    OPC: ["Valeria Areiza", "Valentina Maya", "Laura Petro", "Sara Ríos"],
+    TEATRO: ["Sara Ríos", "Ana"],
+  },
 };
 
 export function withDefaults(d?: Partial<Defaults> | null): Defaults {
-  return { ...DEFAULTS, ...(d ?? {}), ubicaciones: { ...DEFAULTS.ubicaciones, ...(d?.ubicaciones ?? {}) } };
+  return {
+    ...DEFAULTS,
+    ...(d ?? {}),
+    ubicaciones: { ...DEFAULTS.ubicaciones, ...(d?.ubicaciones ?? {}) },
+    coordinadores: d?.coordinadores ?? DEFAULTS.coordinadores,
+  };
 }
 
 export const LUGARES_INICIALES = ["Teatro Universidad de Medellín", "Favor a coordinadores", "Otro"];

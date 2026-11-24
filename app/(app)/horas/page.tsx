@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSession } from "@/components/auth-provider";
+import { withDefaults } from "@/lib/schemas";
 import { saveBlob, usePlaces } from "@/components/hooks";
 import { IconChevron, IconDownload, IconPencil, IconPlus, IconTrash } from "@/components/icons";
 import { useToast } from "@/components/toast";
@@ -19,6 +20,9 @@ interface FormState {
   horas: string;
   valor: string;
   eventId: string | null;
+  /** coordinador para quien se trabajó: un nombre de la lista o escrito a mano */
+  paraQuien: string;
+  paraOtro: boolean;
   origen: WorkLog["origen"];
 }
 
@@ -31,8 +35,10 @@ function csvCell(v: string | number | null) {
 }
 
 export default function HorasPage() {
-  const { user } = useSession();
+  const { user, profile } = useSession();
   const { places, teatroId } = usePlaces(user.uid);
+  const coordinadores = withDefaults(profile.defaults).coordinadores;
+  const todos = Object.values(coordinadores).flat();
   const toast = useToast();
   const [logs, setLogs] = useState<WorkLog[] | null>(null);
   const today = new Date();
@@ -91,6 +97,8 @@ export default function HorasPage() {
       valor: "",
       eventId: null,
       origen: "manual",
+      paraQuien: "",
+      paraOtro: false,
     });
   }
 
@@ -106,6 +114,8 @@ export default function HorasPage() {
       valor: l.valor != null ? String(l.valor) : "",
       eventId: l.eventId,
       origen: l.origen,
+      paraQuien: l.paraQuien ?? "",
+      paraOtro: !!l.paraQuien && !todos.includes(l.paraQuien),
     });
   }
 
@@ -127,6 +137,7 @@ export default function HorasPage() {
         horas,
         valor: form.valor === "" ? null : Number(form.valor),
         eventId: form.eventId,
+        paraQuien: form.paraQuien.trim() || null,
         origen: form.origen,
       },
       form.id,
@@ -147,8 +158,8 @@ export default function HorasPage() {
 
   function exportCsv() {
     const rows = [
-      ["Fecha", "Evento", "Lugar", "Llegada", "Salida", "Horas", "Valor"],
-      ...delMes.map((l) => [l.fecha, l.evento, placeName.get(l.placeId) ?? "", l.llegada ?? "", l.salida ?? "", l.horas ?? "", l.valor ?? ""]),
+      ["Fecha", "Evento", "Lugar", "Para quién", "Llegada", "Salida", "Horas", "Valor"],
+      ...delMes.map((l) => [l.fecha, l.evento, placeName.get(l.placeId) ?? "", l.paraQuien ?? "", l.llegada ?? "", l.salida ?? "", l.horas ?? "", l.valor ?? ""]),
       ["", "", "", "", "Total", total.horas, total.valor],
     ];
     const csv = "﻿" + rows.map((r) => r.map(csvCell).join(";")).join("\r\n");
@@ -267,6 +278,7 @@ export default function HorasPage() {
                       </p>
                       <p className="tabular truncate text-xs text-muted">
                         {placeName.get(l.placeId) ?? "—"}
+                        {l.paraQuien ? ` · para ${l.paraQuien}` : ""}
                         {l.llegada ? ` · ${hora12(l.llegada, true)} – ${hora12(l.salida, true)}` : ""}
                       </p>
                     </div>
@@ -377,6 +389,32 @@ export default function HorasPage() {
               </Field>
             </div>
             <Field label="Evento">{(id) => <Input id={id} value={form.evento} maxLength={160} onChange={(e) => setF({ evento: e.target.value })} placeholder="Ej. Grados mañana" />}</Field>
+            <Field label="¿A quién le trabajaste?" hint="Opcional. La lista se edita en Ajustes.">
+              {(id) => (
+                <div className="space-y-2">
+                  <Select
+                    id={id}
+                    value={form.paraOtro ? "__otro" : form.paraQuien}
+                    onChange={(e) => (e.target.value === "__otro" ? setF({ paraOtro: true, paraQuien: "" }) : setF({ paraOtro: false, paraQuien: e.target.value }))}
+                  >
+                    <option value="">— Nadie en particular —</option>
+                    {Object.entries(coordinadores).map(([grupo, nombres]) => (
+                      <optgroup key={grupo} label={grupo}>
+                        {nombres.map((n) => (
+                          <option key={`${grupo}-${n}`} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                    <option value="__otro">Otra persona (escribir el nombre)</option>
+                  </Select>
+                  {form.paraOtro && (
+                    <Input autoFocus value={form.paraQuien} maxLength={80} placeholder="Nombre de la persona" onChange={(e) => setF({ paraQuien: e.target.value })} />
+                  )}
+                </div>
+              )}
+            </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Llegada">
                 {(id) => (
