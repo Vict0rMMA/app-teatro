@@ -1,0 +1,20 @@
+{
+  "LLAVES": {
+    "firma": {
+      "width": 78,
+      "height": 32
+    }
+  },
+  "COLILLAS": {
+    "firma": {
+      "width": 133,
+      "height": 42
+    }
+  },
+  "EVALUACION": {
+    "firma": {
+      "width": 142,
+      "height": 48
+    }
+  }
+}
