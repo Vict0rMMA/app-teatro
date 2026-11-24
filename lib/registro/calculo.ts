@@ -1,4 +1,4 @@
-import { diffHoras, formatHoras, hora12 } from "../format";
+import { diffHoras, hora12, formatDuracion } from "../format";
 
 export const VALOR_HORA = 10_000;
 export const HORAS_BASE = 4;
@@ -57,7 +57,7 @@ export function horasBase(rows: Leido[]): number {
 export function mensajeSupuestas(n: number, base: number, extras: Extras = EXTRAS) {
   if (!n) return null;
   const quien = n === 1 ? "1 persona no traía horas" : `${n} personas no traían horas`;
-  return `${quien}: base ${formatHoras(base)} h, AC +${formatHoras(extras.ac)} h y C +${formatHoras(extras.c)} h.`;
+  return `${quien}: base ${formatDuracion(base)}, AC +${formatDuracion(extras.ac)} y C +${formatDuracion(extras.c)}.`;
 }
 
 /**
@@ -127,7 +127,7 @@ export function calcularRegistro(
   const nombre = (i: number) => personas[i].nombre.trim() || `la fila ${i + 1}`;
   personas.forEach((p, i) => {
     if (p.horas == null || p.horas <= 0) alertas.push(`Falta las horas de ${nombre(i)}.`);
-    else if (p.horas > 16) alertas.push(`${nombre(i)} tiene ${formatHoras(p.horas)} h: revisa.`);
+    else if (p.horas > 16) alertas.push(`${nombre(i)} tiene ${formatDuracion(p.horas)}: revisa.`);
   });
   if (!opts.salida) alertas.push("Falta la hora de salida.");
   if (opts.salida && opts.horaCitacion) {

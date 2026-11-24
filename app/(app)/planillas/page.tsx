@@ -6,7 +6,7 @@ import { useSession } from "@/components/auth-provider";
 import { IconChevron, IconHistory, IconPlus, IconSearch } from "@/components/icons";
 import { Button, Card, EmptyState, Input, PageHeader, Select, Skeleton, Stat } from "@/components/ui";
 import { watchEvents, type EventDoc } from "@/lib/data";
-import { MESES, fechaCorta, formatCOP, formatHoras, normalize } from "@/lib/format";
+import { MESES, fechaCorta, formatCOP, normalize, formatDuracion } from "@/lib/format";
 
 export default function HistorialPage() {
   const { user } = useSession();
@@ -64,7 +64,7 @@ export default function HistorialPage() {
         <>
           <div className="mb-4 grid grid-cols-3 gap-3">
             <Stat label="Eventos" value={filtered.length} />
-            <Stat label="Horas del personal" value={formatHoras(totals.horas)} />
+            <Stat label="Horas del personal" value={formatDuracion(totals.horas)} />
             <Stat label="Pagado al personal" value={formatCOP(totals.valor)} />
           </div>
           <div className="mb-3 flex flex-col gap-2 sm:flex-row">
@@ -93,7 +93,7 @@ export default function HistorialPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{e.nombre}</p>
                         <p className="tabular text-xs text-faint">
-                          {e.staffCount} personas · {formatHoras(e.totalHoras)} h · aforo {e.aforo ?? "—"}
+                          {e.staffCount} personas · {formatDuracion(e.totalHoras)} · aforo {e.aforo ?? "—"}
                         </p>
                       </div>
                       <div className="tabular hidden text-right text-[13px] sm:block">{formatCOP(e.totalPagado)}</div>

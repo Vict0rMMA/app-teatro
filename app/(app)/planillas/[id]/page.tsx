@@ -13,7 +13,7 @@ import { Badge, Button, EmptyState, Card, Modal, Skeleton, Spinner, cx } from "@
 import { getStaff, watchEvent, type EventDoc, type StaffDoc } from "@/lib/data";
 import { withDefaults } from "@/lib/schemas";
 import { apiFetch, apiJson } from "@/lib/firebase/client";
-import { fechaWhatsapp, formatCOP, formatHoras, hora12 } from "@/lib/format";
+import { fechaWhatsapp, formatCOP, hora12, formatDuracion } from "@/lib/format";
 import { leerRegistro } from "@/lib/registro-memoria";
 
 type Key = "registro" | "llaves" | "colillas" | "evaluacion";
@@ -199,7 +199,7 @@ export default function PlanillaPage() {
         {[
           { label: "Aforo", value: event.aforo != null ? event.aforo.toLocaleString("es-CO") : "—", sub: event.aforo != null ? "personas" : "sin dato" },
           { label: "Personal", value: String(event.staffCount), sub: staff ? `${coordinadores} coordinación · ${event.staffCount - coordinadores} acomodadores` : "…" },
-          { label: "Horas", value: formatHoras(event.totalHoras), sub: "del personal" },
+          { label: "Horas", value: formatDuracion(event.totalHoras), sub: "del personal" },
           { label: "Pagado", value: formatCOP(event.totalPagado), sub: "al personal" },
         ].map((k, i) => (
           <div key={k.label} className={cx("px-5 py-4", i % 2 === 1 && "border-l border-border", i >= 2 && "border-t border-border lg:border-t-0", i === 2 && "lg:border-l")}>
@@ -299,7 +299,7 @@ export default function PlanillaPage() {
                           )}
                         </td>
                         <td className="tabular py-2.5 text-muted">{s.llegada ? `${hora12(s.llegada, true)} – ${hora12(s.salida, true)}` : "—"}</td>
-                        <td className="tabular py-2.5 text-right">{formatHoras(s.horas)}</td>
+                        <td className="tabular whitespace-nowrap py-2.5 text-right">{formatDuracion(s.horas)}</td>
                         <td className="tabular py-2.5 text-right">{formatCOP(s.valor)}</td>
                         <td className="tabular py-2.5 pr-4 text-right text-muted">
                           {s.pp || "—"} · {s.desempeno || "—"}
@@ -312,7 +312,7 @@ export default function PlanillaPage() {
                       <td className="py-3 pl-4" colSpan={4}>
                         Total
                       </td>
-                      <td className="tabular py-3 text-right">{formatHoras(event.totalHoras)}</td>
+                      <td className="tabular whitespace-nowrap py-3 text-right">{formatDuracion(event.totalHoras)}</td>
                       <td className="tabular py-3 text-right">{formatCOP(event.totalPagado)}</td>
                       <td />
                     </tr>
@@ -400,7 +400,7 @@ export default function PlanillaPage() {
         }
       >
         <p className="text-sm text-muted">
-          Se borran los datos y la lista de personal de <span className="font-bold text-fg">{event.nombre}</span>. Las horas que guardaste en Mis horas se conservan.
+          Se borra todo lo de <span className="font-bold text-fg">{event.nombre}</span>: la planilla, la lista de personal y las horas que se guardaron en Mis horas para este evento. No se puede deshacer.
         </p>
       </Modal>
     </div>

@@ -1,4 +1,4 @@
-import { cleanSpaces, diffHoras, normalize, parseFechaEs, parseHora, parseMoney, parseNumber } from "../format";
+import { cleanSpaces, diffHoras, normalize, parseFechaEs, parseHora, parseMoney, parseNumber, parseDuracion } from "../format";
 import { RegistroError, type Cargo, type Registro, type StaffRow, type StaffRowRaw } from "./types";
 
 export type Column = keyof StaffRowRaw;
@@ -40,7 +40,7 @@ export function buildRow(cells: Partial<Record<Column, string>>, fallbackN: numb
   if (nText && !/^\d{1,3}$/.test(nText)) return null;
   const llegada = parseHora(get("llegada"));
   const salida = parseHora(get("salida"));
-  const horas = parseNumber(get("horas")) ?? diffHoras(llegada, salida);
+  const horas = parseDuracion(get("horas")) ?? parseNumber(get("horas")) ?? diffHoras(llegada, salida);
   return {
     n: nText ? Number(nText) : fallbackN,
     nombre,

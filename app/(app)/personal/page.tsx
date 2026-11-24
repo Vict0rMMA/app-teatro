@@ -6,7 +6,7 @@ import { useSession } from "@/components/auth-provider";
 import { IconChevron, IconSearch, IconUsers } from "@/components/icons";
 import { Badge, Card, EmptyState, Input, PageHeader, Skeleton, cx } from "@/components/ui";
 import { getAllStaff, type StaffDoc } from "@/lib/data";
-import { fechaCorta, formatCOP, formatHoras, normalize } from "@/lib/format";
+import { fechaCorta, formatCOP, normalize, formatDuracion } from "@/lib/format";
 
 interface Person {
   key: string;
@@ -93,7 +93,7 @@ export default function PersonalPage() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{p.nombre}</p>
                           <p className="tabular text-xs text-faint">
-                            {p.eventos.length} {p.eventos.length === 1 ? "evento" : "eventos"} · {formatHoras(p.horas)} h
+                            {p.eventos.length} {p.eventos.length === 1 ? "evento" : "eventos"} · {formatDuracion(p.horas)}
                           </p>
                         </div>
                         <div className="hidden gap-1 sm:flex">
@@ -114,7 +114,7 @@ export default function PersonalPage() {
                                 <span className="tabular w-20 shrink-0 text-muted">{fechaCorta(s.fecha)}</span>
                                 <span className="min-w-0 flex-1 truncate">{s.evento}</span>
                                 {s.cargo && <Badge>{s.cargo}</Badge>}
-                                <span className="tabular w-10 text-right">{formatHoras(s.horas)}</span>
+                                <span className="tabular w-20 whitespace-nowrap text-right">{formatDuracion(s.horas)}</span>
                                 <span className="tabular w-20 text-right text-muted">{formatCOP(s.valor)}</span>
                               </Link>
                             </li>

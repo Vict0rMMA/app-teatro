@@ -153,9 +153,47 @@ export function formatCOP(n: number | null | undefined): string {
   return "$" + Math.round(n).toLocaleString("es-CO");
 }
 
+/**
+ * Lee una duración en horas: "5", "5,5", "5.5", "5:30", "5h30", "5 h 30 min", "30 min".
+ * Devuelve horas con decimales (5:30 → 5,5) o null si no se entiende.
+ */
+export function parseDuracion(text: string | null | undefined): number | null {
+  if (text == null) return null;
+  const t = normalize(String(text)).replace(/\s+/g, "");
+  if (!t) return null;
+  let m = t.match(/^(\d{1,2})(?::|h|hr|hrs|horas?)(\d{1,2})(?:m|min|minutos?)?$/);
+  if (m) return Number(m[2]) < 60 ? Math.round((Number(m[1]) + Number(m[2]) / 60) * 100) / 100 : null;
+  m = t.match(/^(\d{1,3})(?:m|min|minutos?)$/);
+  if (m) return Math.round((Number(m[1]) / 60) * 100) / 100;
+  m = t.match(/^(\d{1,2}(?:[.,]\d{1,2})?)(?:h|hr|hrs|horas?)?$/);
+  if (m) return Number(m[1].replace(",", "."));
+  return null;
+}
+
+/** Para mostrar en la app: 5 → "5 h", 5,5 → "5 h 30 min", 0,5 → "30 min". */
+export function formatDuracion(n: number | null | undefined): string {
+  if (n == null) return "—";
+  const total = Math.round(Math.abs(n) * 60);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  const sign = n < 0 ? "−" : "";
+  if (!m) return `${sign}${h} h`;
+  return h ? `${sign}${h} h ${m} min` : `${sign}${m} min`;
+}
+
+/** Para los campos editables: 5 → "5", 5,5 → "5:30". */
+export function duracionCampo(n: number | null | undefined): string {
+  if (n == null) return "";
+  const total = Math.round(n * 60);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return m ? `${h}:${String(m).padStart(2, "0")}` : String(h);
+}
+
+/** Para los documentos de Word (TOTAL HORAS), sin decimales: 5 → "5", 5 h 30 min → "5:30". */
 export function formatHoras(n: number | null | undefined): string {
   if (n == null) return "—";
-  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, "").replace(".", ",");
+  return duracionCampo(n);
 }
 
 /** Nombre de evento apto para archivo, con tildes y ñ: "Grados – Mañana" -> "GRADOS_MAÑANA" */

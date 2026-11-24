@@ -7,7 +7,7 @@ import { IconChevron, IconDownload, IconPencil, IconPlus, IconTrash } from "@/co
 import { useToast } from "@/components/toast";
 import { Badge, Button, Field, Input, Modal, Select, Skeleton, cx } from "@/components/ui";
 import { deleteWorkLog, saveWorkLog, watchWorkLogs, type WorkLog } from "@/lib/data";
-import { DIAS, MESES, diffHoras, formatCOP, formatHoras, hora12, normalize } from "@/lib/format";
+import { DIAS, MESES, diffHoras, formatCOP, hora12, normalize, duracionCampo, formatDuracion, parseDuracion } from "@/lib/format";
 
 interface FormState {
   id?: string;
@@ -102,7 +102,7 @@ export default function HorasPage() {
       placeId: l.placeId,
       llegada: l.llegada ?? "",
       salida: l.salida ?? "",
-      horas: l.horas != null ? String(l.horas) : "",
+      horas: duracionCampo(l.horas),
       valor: l.valor != null ? String(l.valor) : "",
       eventId: l.eventId,
       origen: l.origen,
@@ -113,7 +113,8 @@ export default function HorasPage() {
     e.preventDefault();
     if (!form) return;
     if (!form.fecha || !form.placeId) return toast.error("Completa la fecha y el lugar.");
-    const horas = form.horas === "" ? diffHoras(form.llegada || null, form.salida || null) : Number(form.horas.replace(",", "."));
+    const horas = form.horas === "" ? diffHoras(form.llegada || null, form.salida || null) : parseDuracion(form.horas);
+    if (form.horas !== "" && horas == null) return toast.error("No entendí las horas.", "Escribe por ejemplo 5 o 5:30.");
     if (horas != null && (Number.isNaN(horas) || horas < 0 || horas > 24)) return toast.error("Las horas deben estar entre 0 y 24.");
     const { synced } = saveWorkLog(
       user.uid,
@@ -200,12 +201,12 @@ export default function HorasPage() {
         {[
           {
             label: "Horas",
-            value: formatHoras(total.horas),
-            sub: prevHoras || total.horas ? `${diff >= 0 ? "+" : ""}${formatHoras(diff)} vs. mes anterior` : "Sin registros",
+            value: formatDuracion(total.horas),
+            sub: prevHoras || total.horas ? `${diff >= 0 ? "+" : ""}${formatDuracion(diff)} vs. mes anterior` : "Sin registros",
           },
           { label: "Pagado", value: formatCOP(total.valor), sub: total.horas ? `${formatCOP(total.valor / total.horas)} por hora` : "—" },
           { label: "Eventos", value: String(eventos), sub: `${porDia.size} ${porDia.size === 1 ? "día trabajado" : "días trabajados"}` },
-          { label: "Promedio", value: eventos ? `${formatHoras(Math.round((total.horas / eventos) * 10) / 10)} h` : "—", sub: "por evento" },
+          { label: "Promedio", value: eventos ? formatDuracion(total.horas / eventos) : "—", sub: "por evento" },
         ].map((k, i) => (
           <div key={k.label} className={cx("px-5 py-4", i % 2 === 1 && "border-l border-border", i >= 2 && "border-t border-border lg:border-t-0", i === 2 && "lg:border-l")}>
             <p className="text-xs text-muted">{k.label}</p>
@@ -270,7 +271,7 @@ export default function HorasPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="tabular text-sm font-bold">{formatHoras(l.horas)} h</p>
+                      <p className="tabular whitespace-nowrap text-sm font-bold">{formatDuracion(l.horas)}</p>
                       <p className="tabular text-xs text-muted">{formatCOP(l.valor)}</p>
                     </div>
                     <div className="flex sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
@@ -307,7 +308,7 @@ export default function HorasPage() {
                   <button
                     key={day}
                     onClick={() => openNew(`${mes}-${pad(day)}`)}
-                    title={h ? `${formatHoras(h)} h` : "Agregar turno"}
+                    title={h ? formatDuracion(h) : "Agregar turno"}
                     className={cx(
                       "tabular grid aspect-square place-items-center rounded text-xs transition-colors",
                       h ? "bg-brand font-bold text-brand-fg" : "text-muted hover:bg-subtle hover:text-fg",
@@ -333,7 +334,7 @@ export default function HorasPage() {
                   <li key={id}>
                     <div className="mb-1 flex justify-between text-[13px]">
                       <span className="truncate">{placeName.get(id) ?? "Lugar eliminado"}</span>
-                      <span className="tabular font-bold">{formatHoras(h)} h</span>
+                      <span className="tabular font-bold">{formatDuracion(h)}</span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-subtle">
                       <div className="h-full rounded-full bg-brand" style={{ width: `${(h / maxLugar) * 100}%` }} />
@@ -383,7 +384,7 @@ export default function HorasPage() {
                     id={id}
                     type="time"
                     value={form.llegada}
-                    onChange={(e) => setF({ llegada: e.target.value, horas: String(diffHoras(e.target.value || null, form.salida || null) ?? form.horas) })}
+                    onChange={(e) => setF({ llegada: e.target.value, horas: duracionCampo(diffHoras(e.target.value || null, form.salida || null)) || form.horas })}
                   />
                 )}
               </Field>
@@ -393,11 +394,11 @@ export default function HorasPage() {
                     id={id}
                     type="time"
                     value={form.salida}
-                    onChange={(e) => setF({ salida: e.target.value, horas: String(diffHoras(form.llegada || null, e.target.value || null) ?? form.horas) })}
+                    onChange={(e) => setF({ salida: e.target.value, horas: duracionCampo(diffHoras(form.llegada || null, e.target.value || null)) || form.horas })}
                   />
                 )}
               </Field>
-              <Field label="Horas">{(id) => <Input id={id} inputMode="decimal" value={form.horas} onChange={(e) => setF({ horas: e.target.value })} />}</Field>
+              <Field label="Horas" hint="Ej. 5 o 5:30">{(id) => <Input id={id} value={form.horas} placeholder="5:30" onChange={(e) => setF({ horas: e.target.value })} />}</Field>
               <Field label="Valor">{(id) => <Input id={id} inputMode="numeric" value={form.valor} onChange={(e) => setF({ valor: e.target.value.replace(/\D/g, "") })} placeholder="60000" />}</Field>
             </div>
           </form>

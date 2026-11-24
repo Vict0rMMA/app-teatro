@@ -12,7 +12,7 @@ import { horasDe, nuevaPersona, RegistroTable, type PersonaDraft } from "@/compo
 import { useToast } from "@/components/toast";
 import { Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Textarea, cx } from "@/components/ui";
 import { apiFetch } from "@/lib/firebase/client";
-import { diffHoras, findBestNameMatch, formatCOP, hora12, isIsoDate } from "@/lib/format";
+import { diffHoras, findBestNameMatch, formatCOP, hora12, isIsoDate, parseDuracion, formatDuracion } from "@/lib/format";
 import { calcularRegistro, fromMin, HORAS_BASE, mensajeSupuestas, prepararPersonal, salidaSugerida, toMin } from "@/lib/registro/calculo";
 import type { Registro, StaffRow } from "@/lib/registro/types";
 import { guardarRegistro, base64ToBlob } from "@/lib/registro-memoria";
@@ -190,7 +190,7 @@ export default function NuevaPlanillaPage() {
   const setM = (patch: Partial<MyHours>) => setMine((m) => (m ? { ...m, ...patch } : m));
 
   // Horas base: las filas en automático siguen A = base, AC = base + 1, C = base + 2.
-  const baseNum = draft ? Number(draft.base.replace(",", ".")) : HORAS_BASE;
+  const baseNum = draft ? parseDuracion(draft.base) ?? 0 : HORAS_BASE;
   const baseValida = baseNum > 0 && baseNum <= 16;
   const base = baseValida ? baseNum : HORAS_BASE;
   const personasCalc = useMemo(
@@ -269,7 +269,7 @@ export default function NuevaPlanillaPage() {
               fila: null,
               llegada: mine.llegada || null,
               salida: mine.salida || null,
-              horas: mine.horas === "" ? diffHoras(mine.llegada || null, mine.salida || null) : Number(mine.horas.replace(",", ".")),
+              horas: mine.horas === "" ? diffHoras(mine.llegada || null, mine.salida || null) : parseDuracion(mine.horas),
               valor: toInt(mine.valor),
             }
         : null,
@@ -389,7 +389,8 @@ export default function NuevaPlanillaPage() {
                       inputMode="decimal"
                       className="tabular"
                       value={draft.base}
-                      onChange={(e) => set("base", e.target.value.replace(/[^\d.,]/g, ""))}
+                      onChange={(e) => set("base", e.target.value.replace(/[^\d.,:hm ]/gi, ""))}
+                      placeholder="4"
                     />
                   )}
                 </Field>
@@ -631,7 +632,7 @@ export default function NuevaPlanillaPage() {
               {filaIdx >= 0 ? (
                 <p className="tabular text-[13px] text-muted sm:col-span-2">
                   {calc.filas[filaIdx]?.llegada ? `${hora12(calc.filas[filaIdx].llegada, true)} – ${hora12(calc.filas[filaIdx].salida, true)} · ` : ""}
-                  {calc.filas[filaIdx]?.horas ?? "—"} h · {formatCOP(calc.filas[filaIdx]?.valor)} (se toma de tu fila)
+                  {formatDuracion(calc.filas[filaIdx]?.horas)} · {formatCOP(calc.filas[filaIdx]?.valor)} (se toma de tu fila)
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-4">

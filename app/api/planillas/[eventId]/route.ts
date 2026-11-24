@@ -6,13 +6,18 @@ import { ownedEvent } from "@/lib/server-data";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Elimina la planilla con sus archivos y su personal. Las horas registradas se conservan. */
+/** Elimina la planilla con todo lo conectado: su personal y las horas que generó en Mis horas. */
 export async function DELETE(req: Request, { params }: { params: { eventId: string } }) {
   try {
     const user = await requireUser(req);
     const { ref } = await ownedEvent(user.uid, params.eventId);
-    await adminDb().recursiveDelete(ref);
-    return NextResponse.json({ ok: true });
+    const db = adminDb();
+    const logs = await db.collection("workLogs").where("uid", "==", user.uid).where("eventId", "==", params.eventId).get();
+    const batch = db.batch();
+    logs.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    await db.recursiveDelete(ref);
+    return NextResponse.json({ ok: true, horasBorradas: logs.size });
   } catch (err) {
     return handleError(err);
   }

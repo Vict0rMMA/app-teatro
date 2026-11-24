@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCOP, formatHoras, hora12 } from "@/lib/format";
+import { formatCOP, hora12, duracionCampo, formatDuracion, parseDuracion } from "@/lib/format";
 import { horasPorCargo, type Extras, type FilaCalculada } from "@/lib/registro/calculo";
 import { IconPlus, IconTrash } from "./icons";
 import { Button, Input, Select, cx } from "./ui";
@@ -38,8 +38,7 @@ export const nuevaPersona = (): PersonaDraft => ({
 /** Horas efectivas: las escritas a mano o, en modo automático, las de la regla por cargo. */
 export function horasDe(p: PersonaDraft, base: number, extras: Extras): number | null {
   if (p.auto) return horasPorCargo(p.cargo, base, extras);
-  const n = Number(p.horas.replace(",", "."));
-  return p.horas.trim() === "" || !Number.isFinite(n) ? null : n;
+  return parseDuracion(p.horas);
 }
 
 const cell = "h-8 rounded border-transparent bg-transparent px-2 text-[13px] hover:border-border focus:border-fg/30 focus:bg-surface";
@@ -81,7 +80,7 @@ export function RegistroTable({
               <th className="py-2 font-medium">Nombre</th>
               <th className="w-16 py-2 font-medium">Cargo</th>
               <th className="w-14 py-2 font-medium">UBI</th>
-              <th className="w-20 py-2 font-medium">Horas</th>
+              <th className="w-24 py-2 font-medium">Horas</th>
               <th className="w-[84px] py-2 font-medium">Llegada</th>
               <th className="w-[84px] py-2 font-medium">Salida</th>
               <th className="w-24 py-2 text-right font-medium">Valor</th>
@@ -131,10 +130,11 @@ export function RegistroTable({
                     <Input
                       inputMode="decimal"
                       className={cx(cell, "tabular", sinHoras && "border-warn/60 bg-warn/5", r.auto && "pr-9 text-muted")}
-                      value={r.auto ? String(h ?? "") : r.horas}
-                      onChange={(e) => update(r.key, { horas: e.target.value.replace(/[^\d.,]/g, "") })}
+                      value={r.auto ? duracionCampo(h) : r.horas}
+                      placeholder="5:30"
+                      onChange={(e) => update(r.key, { horas: e.target.value.replace(/[^\d.,:hm ]/gi, "") })}
                       aria-label={`Horas de ${r.nombre || `la fila ${i + 1}`}`}
-                      title={r.auto ? "Automático según cargo y horas base. Escribe para fijarlas a mano." : "Escritas a mano"}
+                      title={r.auto ? "Automático según cargo y horas base. Escribe para fijarlas a mano (ej. 5:30)." : "Escritas a mano. Escribe 5 o 5:30."}
                     />
                     {r.auto && <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase text-faint">auto</span>}
                   </td>
@@ -170,7 +170,7 @@ export function RegistroTable({
                 <td colSpan={4} className="py-2.5 pl-4 text-muted sm:pl-2">
                   Total · {rows.length} {rows.length === 1 ? "persona" : "personas"}
                 </td>
-                <td className="tabular py-2.5 pl-2">{formatHoras(totals.horas)}</td>
+                <td className="tabular whitespace-nowrap py-2.5 pl-2">{formatDuracion(totals.horas)}</td>
                 <td colSpan={2} />
                 <td className="tabular py-2.5 pr-1 text-right">{formatCOP(totals.valor)}</td>
                 <td colSpan={4} />
