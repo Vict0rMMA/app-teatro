@@ -21,11 +21,11 @@ npm test                     # parsers, cálculo y generación de planillas
 - No se usa Firebase Storage. La firma se guarda como PNG en base64 en `users/{uid}.firma` (máx. 150 KB, recortada y comprimida en el navegador).
 - Los .docx no se guardan: el evento guarda sus datos (aforo, horas, notas, evaluación, personal sin cédula ni teléfono) y los archivos se regeneran al descargar.
 - El REGISTRO completo (con cédulas y teléfonos) se entrega una sola vez al generar; en el historial se regenera sin esos datos.
-- Login: Google, Microsoft y correo/contraseña. Sin SMS.
+- Login: Google y correo/contraseña. Sin SMS.
 
 ## Firebase
 
-1. **Authentication → Método de acceso**: Correo/contraseña (activo), **Google** (activar en la consola) y **Microsoft** (requiere registrar una app en Azure: *Microsoft Entra ID → Registros de aplicaciones*, tipo de cuenta "cualquier directorio y cuentas personales", URI de redirección `https://forma-ai-victor.firebaseapp.com/__/auth/handler`; copiar el ID y el secreto en Firebase).
+1. **Authentication → Método de acceso**: Correo/contraseña y Google (ambos activos).
 2. **Authentication → Configuración → Dominios autorizados**: `app-teatro-zeta.vercel.app` y `localhost` (ya agregados).
 3. Reglas e índices:
    ```bash

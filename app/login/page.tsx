@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { AuthCard } from "@/components/auth-card";
 import { RedirectIfAuthed } from "@/components/auth-provider";
-import { OAuthButtons } from "@/components/google-button";
+import { GoogleButton } from "@/components/google-button";
 import { Button, Field, Input } from "@/components/ui";
 import { authMessage } from "@/lib/auth-errors";
 import { firebaseAuth } from "@/lib/firebase/client";
@@ -42,7 +42,7 @@ export default function LoginPage() {
           </>
         }
       >
-        <OAuthButtons />
+        <GoogleButton />
         <form onSubmit={submit} className="space-y-4">
           <Field label="Correo">
             {(id) => <Input id={id} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />}
