@@ -8,7 +8,7 @@ import { IconChevron, IconDownload, IconPencil, IconPlus, IconTrash } from "@/co
 import { useToast } from "@/components/toast";
 import { Badge, Button, Field, Input, Modal, Select, Skeleton, cx } from "@/components/ui";
 import { deleteWorkLog, saveWorkLog, watchWorkLogs, type WorkLog } from "@/lib/data";
-import { DIAS, MESES, diffHoras, formatCOP, hora12, normalize, duracionCampo, formatDuracion, parseDuracion } from "@/lib/format";
+import { DIAS, MESES, formatCOP, hora12, normalize, formatDuracion } from "@/lib/format";
 
 interface FormState {
   id?: string;
@@ -32,6 +32,23 @@ const ymKey = (y: number, m: number) => `${y}-${pad(m + 1)}`;
 function csvCell(v: string | number | null) {
   const s = v == null ? "" : String(v);
   return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function nombreLugar(nombre: string) {
+  return nombre.toLocaleLowerCase("es") === "otro" ? "OPC" : nombre;
+}
+
+function formatearNumero(texto: string) {
+  const digitos = texto.replace(/\D/g, "");
+  return digitos ? Number(digitos).toLocaleString("es-CO") : "";
+}
+
+function llegadaCalculada(salida: string, horasTexto: string) {
+  const horas = Number(horasTexto);
+  if (!salida || !Number.isInteger(horas) || horas < 1 || horas > 24) return "";
+  const [h, m] = salida.split(":").map(Number);
+  const minutos = (h * 60 + m - horas * 60 + 1440) % 1440;
+  return `${pad(Math.floor(minutos / 60))}:${pad(minutos % 60)}`;
 }
 
 export default function HorasPage() {
@@ -110,8 +127,8 @@ export default function HorasPage() {
       placeId: l.placeId,
       llegada: l.llegada ?? "",
       salida: l.salida ?? "",
-      horas: duracionCampo(l.horas),
-      valor: l.valor != null ? String(l.valor) : "",
+      horas: l.horas != null ? String(Math.round(l.horas)) : "",
+      valor: l.valor != null ? formatearNumero(String(l.valor)) : "",
       eventId: l.eventId,
       origen: l.origen,
       paraQuien: l.paraQuien ?? "",
@@ -123,19 +140,20 @@ export default function HorasPage() {
     e.preventDefault();
     if (!form) return;
     if (!form.fecha || !form.placeId) return toast.error("Completa la fecha y el lugar.");
-    const horas = form.horas === "" ? diffHoras(form.llegada || null, form.salida || null) : parseDuracion(form.horas);
+    const horas = Number(form.horas);
     if (form.horas !== "" && horas == null) return toast.error("No entendí las horas.", "Escribe por ejemplo 5 o 5:30.");
-    if (horas != null && (Number.isNaN(horas) || horas < 0 || horas > 24)) return toast.error("Las horas deben estar entre 0 y 24.");
+    if (!form.horas || !Number.isInteger(horas) || horas < 1 || horas > 24) return toast.error("Escribe las horas completas", "Usa un número entero entre 1 y 24.");
+    if (!form.salida || !llegadaCalculada(form.salida, form.horas)) return toast.error("Completa la hora de salida para calcular la llegada.");
     const { synced } = saveWorkLog(
       user.uid,
       {
         fecha: form.fecha,
         evento: form.evento.trim(),
         placeId: form.placeId,
-        llegada: form.llegada || null,
+        llegada: llegadaCalculada(form.salida, form.horas),
         salida: form.salida || null,
         horas,
-        valor: form.valor === "" ? null : Number(form.valor),
+        valor: form.valor === "" ? null : Number(form.valor.replace(/\D/g, "")),
         eventId: form.eventId,
         paraQuien: form.paraQuien.trim() || null,
         origen: form.origen,
@@ -237,7 +255,7 @@ export default function HorasPage() {
               <option value="">Todos los lugares</option>
               {places?.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.nombre}
+                  {nombreLugar(p.nombre)}
                 </option>
               ))}
             </Select>
@@ -381,7 +399,7 @@ export default function HorasPage() {
                   <Select id={id} value={form.placeId} onChange={(e) => setF({ placeId: e.target.value })}>
                     {places?.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.nombre}
+                        {nombreLugar(p.nombre)}
                       </option>
                     ))}
                   </Select>
@@ -421,8 +439,8 @@ export default function HorasPage() {
                   <Input
                     id={id}
                     type="time"
-                    value={form.llegada}
-                    onChange={(e) => setF({ llegada: e.target.value, horas: duracionCampo(diffHoras(e.target.value || null, form.salida || null)) || form.horas })}
+                    value={llegadaCalculada(form.salida, form.horas)}
+                    readOnly
                   />
                 )}
               </Field>
@@ -432,12 +450,12 @@ export default function HorasPage() {
                     id={id}
                     type="time"
                     value={form.salida}
-                    onChange={(e) => setF({ salida: e.target.value, horas: duracionCampo(diffHoras(form.llegada || null, e.target.value || null)) || form.horas })}
+                    onChange={(e) => setF({ salida: e.target.value })}
                   />
                 )}
               </Field>
-              <Field label="Horas" hint="Ej. 5 o 5:30">{(id) => <Input id={id} value={form.horas} placeholder="5:30" onChange={(e) => setF({ horas: e.target.value })} />}</Field>
-              <Field label="Valor">{(id) => <Input id={id} inputMode="numeric" value={form.valor} onChange={(e) => setF({ valor: e.target.value.replace(/\D/g, "") })} placeholder="60000" />}</Field>
+              <Field label="Horas" hint="Solo horas completas; la llegada se calcula desde la salida.">{(id) => <Input id={id} inputMode="numeric" value={form.horas} placeholder="5" onChange={(e) => setF({ horas: e.target.value.replace(/\D/g, "").slice(0, 2) })} />}</Field>
+              <Field label="Valor">{(id) => <Input id={id} inputMode="numeric" value={form.valor} onChange={(e) => setF({ valor: formatearNumero(e.target.value) })} placeholder="10.000" />}</Field>
             </div>
           </form>
         )}
