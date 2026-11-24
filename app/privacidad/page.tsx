@@ -11,7 +11,7 @@ export default function PrivacidadPage() {
       <Link href="/" className="text-[13px] text-muted hover:text-fg">
         ← Volver
       </Link>
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight">Aviso de privacidad</h1>
+      <h1 className="mt-4 text-2xl font-bold">Aviso de privacidad</h1>
       <p className="mt-2 text-sm text-muted">Tratamiento de datos personales conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013 (Colombia).</p>
 
       <div className="mt-10 space-y-8 text-[14.5px] leading-relaxed text-fg/90 [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-fg [&_li]:mt-1 [&_ul]:list-disc [&_ul]:pl-5">

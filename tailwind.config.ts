@@ -21,8 +21,8 @@ export default {
         danger: v("danger"),
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
-        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+        sans: ["Arial", "\"Helvetica Neue\"", "Helvetica", "sans-serif"],
+        mono: ["ui-monospace", "Consolas", "\"Courier New\"", "monospace"],
       },
       boxShadow: {
         card: "0 1px 0 0 rgb(0 0 0 / 0.02), 0 1px 2px 0 rgb(0 0 0 / 0.04)",

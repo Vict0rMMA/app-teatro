@@ -55,7 +55,7 @@ export default function LoginPage() {
           <Button type="submit" variant="primary" className="w-full" loading={loading}>
             Entrar
           </Button>
-          <p className="text-center">
+          <p>
             <Link href="/recuperar" className="text-[13px] text-muted hover:text-fg">
               ¿Olvidaste tu contraseña?
             </Link>

@@ -44,7 +44,6 @@
   }
   body {
     @apply bg-bg text-fg antialiased;
-    font-feature-settings: "cv11", "ss01";
   }
   ::selection {
     @apply bg-brand/20;

@@ -144,7 +144,7 @@ export default function PlanillaPage() {
           <Link href="/planillas" className="text-[13px] text-muted hover:text-fg">
             ← Historial
           </Link>
-          <h1 className="mt-2 text-xl font-semibold tracking-tight">PLANILLAS {event.nombre.toUpperCase()}</h1>
+          <h1 className="mt-2 text-xl font-bold">PLANILLAS {event.nombre.toUpperCase()}</h1>
           <p className="mt-1 text-sm text-muted">
             {fechaWhatsapp(event.fecha)} de {event.fecha.slice(0, 4)} · Citación {hora12(event.horaCitacion)} · Evento {hora12(event.horaEvento)}
           </p>

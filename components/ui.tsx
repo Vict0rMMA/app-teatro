@@ -21,7 +21,7 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-brand text-brand-fg shadow-[0_1px_0_0_rgb(255_255_255/0.15)_inset,0_6px_16px_-8px_rgb(var(--brand)/0.7)] hover:bg-brand/90 disabled:bg-brand/50",
+  primary: "bg-brand text-brand-fg hover:bg-brand/90 disabled:bg-brand/50",
   secondary: "bg-surface text-fg border border-border hover:bg-subtle shadow-card",
   ghost: "text-muted hover:text-fg hover:bg-subtle",
   danger: "bg-danger text-white hover:bg-danger/90",
@@ -161,7 +161,7 @@ export function PageHeader({ title, description, action }: { title: string; desc
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-xl font-bold">{title}</h1>
         {description && <p className="mt-1 text-sm text-muted">{description}</p>}
       </div>
       {action && <div className="flex flex-wrap gap-2">{action}</div>}
@@ -222,7 +222,7 @@ export function Stat({ label, value, sub }: { label: string; value: ReactNode; s
   return (
     <div className="rounded-lg border border-border bg-surface px-4 py-3 shadow-card">
       <p className="text-xs text-muted">{label}</p>
-      <p className="tabular mt-1 text-lg font-semibold tracking-tight">{value}</p>
+      <p className="tabular mt-1 text-lg font-bold">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-faint">{sub}</p>}
     </div>
   );
