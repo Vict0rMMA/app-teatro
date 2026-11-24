@@ -89,6 +89,7 @@ export interface StaffDoc {
   pp: string;
   desempeno: string;
   observacion?: string;
+  ubi?: string;
 }
 
 const db = () => firestore();

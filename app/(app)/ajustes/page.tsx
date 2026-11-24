@@ -20,6 +20,7 @@ export default function AjustesPage() {
       <div className="space-y-5">
         <PerfilCard />
         <DefaultsCard />
+        <UbicacionesCard />
         <LugaresCard />
         <DatosCard />
       </div>
@@ -94,7 +95,8 @@ function DefaultsCard() {
     if (!Number.isFinite(d.valorHora) || d.valorHora < 0) return toast.error("El valor por hora no es válido.");
     setSaving(true);
     try {
-      await updateProfile(user.uid, { defaults: d });
+      // Las ubicaciones se editan en su propia tarjeta: se conservan las actuales.
+      await updateProfile(user.uid, { defaults: { ...d, ubicaciones: withDefaults(profile.defaults).ubicaciones } });
       toast.success("Valores por defecto guardados");
     } catch {
       toast.error("No se pudieron guardar");
@@ -118,6 +120,18 @@ function DefaultsCard() {
             />
           )}
         </Field>
+        <div className="grid grid-cols-2 gap-4 sm:w-96">
+          <Field label="Apoyo (AC)" hint="horas sobre la base">
+            {(id) => (
+              <Input id={id} inputMode="decimal" className="tabular" value={String(d.extraAC)} onChange={(e) => setD({ ...d, extraAC: Number(e.target.value.replace(",", ".")) || 0 })} />
+            )}
+          </Field>
+          <Field label="Coordinador (C)" hint="horas sobre la base">
+            {(id) => (
+              <Input id={id} inputMode="decimal" className="tabular" value={String(d.extraC)} onChange={(e) => setD({ ...d, extraC: Number(e.target.value.replace(",", ".")) || 0 })} />
+            )}
+          </Field>
+        </div>
         <Field label="Nota (LLAVES y viñeta de EVALUACIÓN)">{(id) => <Textarea id={id} rows={2} value={d.nota} onChange={(e) => set("nota", e.target.value)} />}</Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Reclamos y sugerencias del público">{(id) => <Textarea id={id} rows={2} value={d.reclamos} onChange={(e) => set("reclamos", e.target.value)} />}</Field>
@@ -126,6 +140,69 @@ function DefaultsCard() {
           <Field label="Objetos perdidos (WhatsApp)">{(id) => <Textarea id={id} rows={2} value={d.objetosPerdidos} onChange={(e) => set("objetosPerdidos", e.target.value)} />}</Field>
         </div>
         <div className="flex justify-end">
+          <Button type="submit" variant="primary" loading={saving}>
+            Guardar
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+/** Significado de la columna UBI (letra → nombre). Solo informa: no cambia horas ni pagos. */
+function UbicacionesCard() {
+  const { user, profile } = useSession();
+  const toast = useToast();
+  const inicial = Object.entries(withDefaults(profile.defaults).ubicaciones).map(([letra, nombre]) => ({ letra, nombre }));
+  const [rows, setRows] = useState(inicial.length ? inicial : [{ letra: "", nombre: "" }]);
+  const [saving, setSaving] = useState(false);
+  const setRow = (i: number, patch: Partial<{ letra: string; nombre: string }>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    const limpias = rows.map((r) => ({ letra: r.letra.trim().toUpperCase(), nombre: r.nombre.trim() })).filter((r) => r.letra && r.nombre);
+    const letras = limpias.map((r) => r.letra);
+    if (new Set(letras).size !== letras.length) return toast.error("Hay letras repetidas.");
+    setSaving(true);
+    try {
+      await updateProfile(user.uid, { defaults: { ...withDefaults(profile.defaults), ubicaciones: Object.fromEntries(limpias.map((r) => [r.letra, r.nombre])) } });
+      toast.success("Ubicaciones guardadas");
+    } catch {
+      toast.error("No se pudieron guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader title="Ubicaciones (UBI)" description="Qué significa cada letra de la columna UBI. Se ve al pasar el cursor sobre la letra en el registro." />
+      <form onSubmit={save} className="p-4 sm:p-5">
+        <div className="space-y-2">
+          <div className="grid grid-cols-[72px_1fr_32px] gap-2 text-[11px] font-bold uppercase tracking-wide text-faint">
+            <span>Letra</span>
+            <span>Ubicación</span>
+            <span />
+          </div>
+          {rows.map((r, i) => (
+            <div key={i} className="grid grid-cols-[72px_1fr_32px] items-center gap-2">
+              <Input value={r.letra} maxLength={4} className="text-center font-bold uppercase" onChange={(e) => setRow(i, { letra: e.target.value.toUpperCase() })} aria-label={`Letra ${i + 1}`} />
+              <Input value={r.nombre} maxLength={60} placeholder="Ej. Luneta centro" onChange={(e) => setRow(i, { nombre: e.target.value })} aria-label={`Ubicación ${i + 1}`} />
+              <button
+                type="button"
+                onClick={() => setRows(rows.filter((_, j) => j !== i))}
+                className="grid h-8 w-8 place-items-center rounded text-faint hover:bg-subtle hover:text-danger"
+                aria-label={`Quitar ubicación ${i + 1}`}
+              >
+                <IconTrash width={14} height={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <Button type="button" size="sm" variant="ghost" icon={<IconPlus />} onClick={() => setRows([...rows, { letra: "", nombre: "" }])}>
+            Agregar ubicación
+          </Button>
           <Button type="submit" variant="primary" loading={saving}>
             Guardar
           </Button>

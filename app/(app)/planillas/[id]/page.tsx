@@ -11,6 +11,7 @@ import { IconAlert, IconCheck, IconCopy, IconDownload, IconEye, IconFile, IconTr
 import { useToast } from "@/components/toast";
 import { Badge, Button, EmptyState, Card, Modal, Skeleton, Spinner, cx } from "@/components/ui";
 import { getStaff, watchEvent, type EventDoc, type StaffDoc } from "@/lib/data";
+import { withDefaults } from "@/lib/schemas";
 import { apiFetch, apiJson } from "@/lib/firebase/client";
 import { fechaWhatsapp, formatCOP, formatHoras, hora12 } from "@/lib/format";
 import { leerRegistro } from "@/lib/registro-memoria";
@@ -34,7 +35,8 @@ async function fetchFile(eventId: string, file: string) {
 
 export default function PlanillaPage() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useSession();
+  const { user, profile } = useSession();
+  const ubicaciones = withDefaults(profile.defaults).ubicaciones;
   const router = useRouter();
   const toast = useToast();
   const [event, setEvent] = useState<EventDoc | null | undefined>(undefined);
@@ -267,11 +269,12 @@ export default function PlanillaPage() {
               <p className="rounded-lg border border-dashed border-border px-5 py-8 text-center text-[13px] text-muted">Esta planilla se generó sin lista de personal.</p>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-border bg-surface">
-                <table className="w-full min-w-[600px] text-[13px]">
+                <table className="w-full min-w-[660px] text-[13px]">
                   <thead>
                     <tr className="border-b border-border bg-subtle/50 text-left text-[11px] font-bold uppercase tracking-wide text-faint">
                       <th className="py-2.5 pl-4">Nombre</th>
                       <th className="py-2.5">Cargo</th>
+                      <th className="py-2.5">UBI</th>
                       <th className="py-2.5">Horario</th>
                       <th className="py-2.5 text-right">Horas</th>
                       <th className="py-2.5 text-right">Valor</th>
@@ -283,6 +286,18 @@ export default function PlanillaPage() {
                       <tr key={s.id} className="border-b border-border/60 last:border-0">
                         <td className="py-2.5 pl-4 font-bold">{s.nombre}</td>
                         <td className="py-2.5">{s.cargo ? <Badge tone={s.cargo === "C" ? "brand" : "neutral"}>{s.cargo}</Badge> : "—"}</td>
+                        <td className="py-2.5">
+                          {s.ubi ? (
+                            <span
+                              title={ubicaciones[s.ubi.toUpperCase()] ?? undefined}
+                              className={ubicaciones[s.ubi.toUpperCase()] ? "cursor-help underline decoration-dotted underline-offset-2" : "text-muted"}
+                            >
+                              {s.ubi}
+                            </span>
+                          ) : (
+                            <span className="text-faint">—</span>
+                          )}
+                        </td>
                         <td className="tabular py-2.5 text-muted">{s.llegada ? `${hora12(s.llegada, true)} – ${hora12(s.salida, true)}` : "—"}</td>
                         <td className="tabular py-2.5 text-right">{formatHoras(s.horas)}</td>
                         <td className="tabular py-2.5 text-right">{formatCOP(s.valor)}</td>
@@ -294,7 +309,7 @@ export default function PlanillaPage() {
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-border font-bold">
-                      <td className="py-3 pl-4" colSpan={3}>
+                      <td className="py-3 pl-4" colSpan={4}>
                         Total
                       </td>
                       <td className="tabular py-3 text-right">{formatHoras(event.totalHoras)}</td>

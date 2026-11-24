@@ -10,10 +10,10 @@ import { usePlaces } from "@/components/hooks";
 import { IconAlert, IconFile, IconPencil, IconPlus, IconTrash, IconX } from "@/components/icons";
 import { horasDe, nuevaPersona, RegistroTable, type PersonaDraft } from "@/components/registro-table";
 import { useToast } from "@/components/toast";
-import { Badge, Button, Card, CardHeader, Field, Input, Modal, PageHeader, Select, Textarea, cx } from "@/components/ui";
+import { Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Textarea, cx } from "@/components/ui";
 import { apiFetch } from "@/lib/firebase/client";
 import { diffHoras, findBestNameMatch, formatCOP, hora12, isIsoDate } from "@/lib/format";
-import { calcularRegistro, prepararPersonal, salidaSugerida } from "@/lib/registro/calculo";
+import { calcularRegistro, fromMin, HORAS_BASE, mensajeSupuestas, prepararPersonal, salidaSugerida, toMin } from "@/lib/registro/calculo";
 import type { Registro, StaffRow } from "@/lib/registro/types";
 import { guardarRegistro, base64ToBlob } from "@/lib/registro-memoria";
 import { withDefaults, type GenerateInput } from "@/lib/schemas";
@@ -34,9 +34,12 @@ interface Draft {
   horaEvento: string;
   salida: string;
   salidaEditada: boolean;
+  /** salida escrita en el archivo (la más común), si la había */
+  salidaArchivo: string | null;
+  /** horas base del evento (las de los acomodadores) */
+  base: string;
   aforo: string;
   personas: PersonaDraft[];
-  supuestos: string[];
   warnings: string[];
   notaLlaves: string;
   reclamos: string;
@@ -65,6 +68,7 @@ const toInt = (s: string) => (s.trim() === "" ? null : Number(s.replace(/\D/g, "
 export default function NuevaPlanillaPage() {
   const { profile, user } = useSession();
   const defaults = withDefaults(profile.defaults);
+  const extras = { ac: defaults.extraAC, c: defaults.extraC };
   const { places, teatroId } = usePlaces(user.uid);
   const toast = useToast();
   const router = useRouter();
@@ -97,9 +101,10 @@ export default function NuevaPlanillaPage() {
       horaEvento: "",
       salida: salida ?? "",
       salidaEditada: false,
+      salidaArchivo: null,
+      base: String(HORAS_BASE),
       aforo: "",
       personas,
-      supuestos: [],
       warnings: [],
       notaLlaves: defaults.nota,
       reclamos: defaults.reclamos,
@@ -139,22 +144,30 @@ export default function NuevaPlanillaPage() {
       }
       if (!res.ok) throw new Error(data.error ?? "No se pudo leer el archivo.");
       const r = data as Registro<StaffRow>;
-      const prep = prepararPersonal(r.staff, r.horaCitacion);
+      const prep = prepararPersonal(r.staff, r.horaCitacion, extras);
       const personas: PersonaDraft[] = prep.rows.map((s) => ({
         key: Math.random().toString(36).slice(2),
         nombre: s.nombre,
         cargo: s.cargo,
-        horas: s.horas != null ? String(s.horas) : "",
+        horas: s.auto ? "" : String(s.horas),
         pp: s.pp,
         desempeno: s.desempeno,
         observacion: s.observacion,
         ubi: s.ubi,
         cc: s.cc,
         delArchivo: true,
-        supuesta: s.supuesta,
+        auto: s.auto,
       }));
       start(
-        { archivo: file, evento: r.evento, fecha: r.fecha ?? "", horaEvento: r.horaEvento ?? "", supuestos: prep.supuestos, warnings: r.warnings },
+        {
+          archivo: file,
+          evento: r.evento,
+          fecha: r.fecha ?? "",
+          horaEvento: r.horaEvento ?? "",
+          warnings: r.warnings,
+          base: String(prep.base),
+          salidaArchivo: salidaSugerida(r.staff, null, prep.base),
+        },
         personas,
         r.horaCitacion ?? "",
         prep.salida,
@@ -176,9 +189,17 @@ export default function NuevaPlanillaPage() {
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
   const setM = (patch: Partial<MyHours>) => setMine((m) => (m ? { ...m, ...patch } : m));
 
-  // La salida sugerida sigue a la citación y a las horas mientras el coordinador no la cambie.
-  const personasCalc = useMemo(() => (draft?.personas ?? []).map((p) => ({ nombre: p.nombre, horas: horasDe(p) })), [draft?.personas]);
-  const sugerida = draft ? salidaSugerida(personasCalc, draft.horaCitacion || null) : null;
+  // Horas base: las filas en automático siguen A = base, AC = base + 1, C = base + 2.
+  const baseNum = draft ? Number(draft.base.replace(",", ".")) : HORAS_BASE;
+  const baseValida = baseNum > 0 && baseNum <= 16;
+  const base = baseValida ? baseNum : HORAS_BASE;
+  const personasCalc = useMemo(
+    () => (draft?.personas ?? []).map((p) => ({ nombre: p.nombre, horas: horasDe(p, base, extras) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [draft?.personas, base, extras.ac, extras.c],
+  );
+  // La salida sugerida (escrita en el archivo, o citación + base) se usa mientras el coordinador no la cambie.
+  const sugerida = draft ? (draft.salidaArchivo ?? (draft.horaCitacion ? fromMin(toMin(draft.horaCitacion) + base * 60) : null)) : null;
   const salida = draft ? (draft.salidaEditada ? draft.salida : sugerida ?? draft.salida) : "";
   const calc = useMemo(
     () => calcularRegistro(personasCalc, { salida: salida || null, horaCitacion: draft?.horaCitacion || null, valorHora: defaults.valorHora }),
@@ -193,6 +214,7 @@ export default function NuevaPlanillaPage() {
     if (!/^\d{2}:\d{2}$/.test(d.horaCitacion)) e.horaCitacion = "Falta la hora de citación.";
     if (!/^\d{2}:\d{2}$/.test(d.horaEvento)) e.horaEvento = "Falta la hora del evento.";
     if (!/^\d{2}:\d{2}$/.test(salida)) e.salida = "Falta la hora de salida.";
+    if (!baseValida) e.salida = "Las horas base deben estar entre 1 y 16.";
     if (d.aforo !== "" && !/^\d+$/.test(d.aforo)) e.aforo = "El aforo debe ser un número.";
     if (d.personas.some((p) => !p.nombre.trim())) e.personas = "Hay filas sin nombre: complétalas o quítalas.";
     if (mine?.guardar && !mine.placeId) e.mine = "Elige el lugar de trabajo.";
@@ -232,7 +254,7 @@ export default function NuevaPlanillaPage() {
       personal: draft.personas.map((p) => ({
         nombre: p.nombre.trim(),
         cargo: p.cargo,
-        horas: horasDe(p),
+        horas: horasDe(p, base, extras),
         pp: p.pp.trim(),
         desempeno: p.desempeno.trim(),
         observacion: p.observacion.trim(),
@@ -292,7 +314,9 @@ export default function NuevaPlanillaPage() {
     );
   }
 
-  const alertas = [...draft.supuestos, ...calc.alertas];
+  const autoDelArchivo = draft.personas.filter((p) => p.auto && p.delArchivo).length;
+  const supuestas = mensajeSupuestas(autoDelArchivo, base, extras);
+  const alertas = [...(supuestas ? [supuestas] : []), ...calc.alertas];
 
   return (
     <form onSubmit={submit} noValidate>
@@ -331,7 +355,7 @@ export default function NuevaPlanillaPage() {
 
       <div className="space-y-5">
         <Card>
-          <CardHeader title="1. Evento" />
+          <StepHeader n={1} title="Evento" description="Datos que salen en el encabezado de las planillas." />
           <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-4">
             <Field label="Nombre del evento" error={errors.evento} className="sm:col-span-2 lg:col-span-4">
               {(id) => <Input id={id} value={draft.evento} onChange={(e) => set("evento", e.target.value)} placeholder="RED DE ESCUELAS" />}
@@ -345,24 +369,35 @@ export default function NuevaPlanillaPage() {
             <Field label="Hora del evento" error={errors.horaEvento}>
               {(id) => <Input id={id} type="time" value={draft.horaEvento} onChange={(e) => set("horaEvento", e.target.value)} />}
             </Field>
-            <Field label="Aforo" hint="Si aún no lo sabes, COLILLAS sale con ____" error={errors.aforo}>
+            <Field label="Aforo" hint="Opcional" error={errors.aforo}>
               {(id) => <Input id={id} inputMode="numeric" value={draft.aforo} onChange={(e) => set("aforo", e.target.value.replace(/\D/g, ""))} placeholder="500" />}
             </Field>
           </div>
         </Card>
 
         <Card>
-          <CardHeader
-            title="2. Registro de personal"
-            description={`Pon o corrige las horas de cada persona. Valor por hora ${formatCOP(defaults.valorHora)}.`}
+          <StepHeader
+            n={2}
+            title="Registro de personal"
+            description={`A = base · AC = base + ${extras.ac} · C = base + ${extras.c}. Valor por hora ${formatCOP(defaults.valorHora)}.`}
             action={
-              <div className="flex items-end gap-2">
-                <Field label="Salida (todos)" error={errors.salida}>
+              <div className="flex items-start gap-3">
+                <Field className="w-24" label="Horas base" hint={baseValida ? `AC +${extras.ac} · C +${extras.c}` : undefined} error={baseValida ? null : "Entre 1 y 16"}>
+                  {(id) => (
+                    <Input
+                      id={id}
+                      inputMode="decimal"
+                      className="tabular"
+                      value={draft.base}
+                      onChange={(e) => set("base", e.target.value.replace(/[^\d.,]/g, ""))}
+                    />
+                  )}
+                </Field>
+                <Field className="w-36" label="Salida (todos)" error={errors.salida}>
                   {(id) => (
                     <Input
                       id={id}
                       type="time"
-                      className="w-32"
                       value={salida}
                       onChange={(e) => setDraft((d) => (d ? { ...d, salida: e.target.value, salidaEditada: true } : d))}
                     />
@@ -374,7 +409,7 @@ export default function NuevaPlanillaPage() {
           <div className="p-4 pt-2 sm:p-5 sm:pt-2">
             {draft.salidaEditada && sugerida && sugerida !== salida && (
               <p className="mb-2 text-xs text-muted">
-                Sugerida: {hora12(sugerida)} (citación + horas del grupo más numeroso).{" "}
+                Sugerida: {hora12(sugerida)} ({draft.salidaArchivo ? "la del registro" : `citación + ${base} h base`}).{" "}
                 <button type="button" className="font-medium text-fg underline underline-offset-2" onClick={() => setDraft((d) => (d ? { ...d, salidaEditada: false } : d))}>
                   Usar la sugerida
                 </button>
@@ -396,13 +431,16 @@ export default function NuevaPlanillaPage() {
               totals={{ horas: calc.totalHoras, valor: calc.totalValor }}
               onChange={(rows) => set("personas", rows)}
               highlight={mine.fila}
+              base={base}
+              extras={extras}
+              ubicaciones={defaults.ubicaciones}
             />
             {errors.personas && <p className="mt-2 text-xs text-danger">{errors.personas}</p>}
           </div>
         </Card>
 
         <Card>
-          <CardHeader title="3. Planillas" description="Valores por defecto de Ajustes; cámbialos solo para este evento." />
+          <StepHeader n={3} title="Planillas" description="Valores por defecto de Ajustes; cámbialos solo para este evento." />
           <div className="divide-y divide-border">
             <Section title="Llaves">
               <Field label="Nota" hint="Va en la línea NOTA: de LLAVES. Incluye cualquier observación sobre las llaves.">
@@ -502,7 +540,7 @@ export default function NuevaPlanillaPage() {
         </Card>
 
         <Card>
-          <CardHeader title="4. Firma" />
+          <StepHeader n={4} title="Firma" description="La de tu perfil o una solo para este evento." />
           <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
             <div className="grid h-20 w-44 shrink-0 place-items-center rounded-md border border-border bg-white">
               {firmaEventoUrl || profile.firma ? (
@@ -541,8 +579,9 @@ export default function NuevaPlanillaPage() {
         </Card>
 
         <Card>
-          <CardHeader
-            title="5. Mis horas"
+          <StepHeader
+            n={5}
+            title="Mis horas"
             description={
               filaIdx >= 0 ? (
                 <>
@@ -648,6 +687,22 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
     <div className={cx("px-4 py-4 sm:px-5")}>
       <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-faint">{title}</p>
       {children}
+    </div>
+  );
+}
+
+/** Encabezado de paso: número en rojo, título destacado y descripción. */
+function StepHeader({ n, title, description, action }: { n: number; title: string; description?: ReactNode; action?: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="tabular grid h-8 w-8 shrink-0 place-items-center rounded-md bg-brand text-sm font-bold text-brand-fg">{n}</span>
+        <div className="min-w-0 pt-0.5">
+          <h2 className="text-base font-bold leading-tight">{title}</h2>
+          {description && <p className="mt-1 text-[13px] text-muted">{description}</p>}
+        </div>
+      </div>
+      {action && <div className="shrink-0 pl-11 sm:pl-0">{action}</div>}
     </div>
   );
 }

@@ -60,9 +60,13 @@ node scripts/build-templates.mjs ruta/a/originales   # LLAVES, COLILLAS, EVALUAC
 
 ## Reglas del registro
 
-- SALIDA igual para todos = citación + horas del grupo más numeroso (editable).
-- LLEGADA = SALIDA − horas de cada persona. VALOR = horas × valor por hora (Ajustes, por defecto $10.000).
-- P.P y DESEMP = 5 por defecto. Sin horas en el archivo: C 6 h, AC 5 h, resto 4 h (con aviso).
+- Cargos: **A** = acomodador, **AC** = apoyo, **C** = coordinador.
+- **Horas base** = horas de los acomodadores (las más repetidas en el archivo; si no hay, 4). Editable arriba de la tabla.
+- AC = base + 1 y C = base + 2 (configurables en Ajustes). Ej.: base 4 → 4 / 5 / 6; base 6 → 6 / 7 / 8.
+- La regla solo aplica a quien no trae horas en el archivo. Si se escriben horas a mano en una fila, se respetan.
+- SALIDA igual para todos = la escrita en el registro o citación + horas base (editable). LLEGADA = SALIDA − horas.
+- VALOR = horas × valor por hora (Ajustes, por defecto $10.000). P.P y DESEMP = 5 por defecto.
+- UBI: letra → ubicación en Ajustes (S = Seguidores). Solo informa; no cambia horas ni pagos.
 - Nombre, cédula, teléfono, UBI y cargo del archivo no se modifican.
 
 ## Pruebas manuales del lienzo de firma

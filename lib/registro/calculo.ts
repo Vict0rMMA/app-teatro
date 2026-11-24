@@ -1,12 +1,16 @@
 import { diffHoras, formatHoras, hora12 } from "../format";
 
 export const VALOR_HORA = 10_000;
-export const HORAS_POR_CARGO = { C: 6, AC: 5, A: 4 } as const;
+export const HORAS_BASE = 4;
+/** Horas extra por cargo sobre las horas base (configurables en Ajustes). */
+export const EXTRAS = { ac: 1, c: 2 };
 
 type Cargo = "C" | "AC" | "A" | "";
+export type Extras = { ac: number; c: number };
 
-export function horasPorCargo(cargo: Cargo): number {
-  return cargo === "C" ? HORAS_POR_CARGO.C : cargo === "AC" ? HORAS_POR_CARGO.AC : HORAS_POR_CARGO.A;
+/** A = base · AC (apoyo) = base + extra AC · C (coordinador) = base + extra C. */
+export function horasPorCargo(cargo: Cargo, base: number, extras: Extras = EXTRAS): number {
+  return cargo === "C" ? base + extras.c : cargo === "AC" ? base + extras.ac : base;
 }
 
 export function toMin(hhmm: string) {
@@ -38,39 +42,54 @@ interface Leido {
 }
 
 /**
- * Prepara el personal leído del archivo para la tabla editable:
- * - Horas: las del archivo; si faltan, desde llegada/salida; si tampoco, C 6 h, AC 5 h, resto 4 h (suposición).
- * - P.P y DESEMP: 5 si vienen vacíos.
- * - Salida común sugerida: la más escrita en el archivo o, si no hay, citación + horas del grupo más numeroso.
+ * Horas base del evento = horas de los acomodadores (A). Si el archivo trae horas para
+ * los A, se toma el valor más repetido; si no, 4.
  */
-export function prepararPersonal<T extends Leido>(rows: T[], horaCitacion: string | null) {
-  let supuestas = 0;
-  const out = rows.map((r) => {
-    let horas = r.horas ?? diffHoras(r.llegada, r.salida);
-    let supuesta = false;
-    if (horas == null) {
-      horas = horasPorCargo(r.cargo);
-      supuesta = true;
-      supuestas++;
-    }
-    return { ...r, horas, supuesta, pp: r.pp.trim() || "5", desempeno: r.desempeno.trim() || "5" };
-  });
-  const supuestos: string[] = [];
-  if (supuestas) {
-    supuestos.push(
-      supuestas === rows.length
-        ? "El registro no traía horas: supuse coordinador 6 h, AC 5 h y el resto 4 h."
-        : `${supuestas} ${supuestas === 1 ? "persona no traía" : "personas no traían"} horas: supuse C 6 h, AC 5 h y resto 4 h.`,
-    );
-  }
-  return { rows: out, salida: salidaSugerida(out, horaCitacion), supuestos };
+export function horasBase(rows: Leido[]): number {
+  const deA = rows
+    .filter((r) => r.cargo === "A" || r.cargo === "")
+    .map((r) => r.horas ?? diffHoras(r.llegada, r.salida))
+    .filter((h): h is number => h != null && h > 0);
+  return moda(deA) ?? HORAS_BASE;
 }
 
-export function salidaSugerida(rows: Array<{ salida?: string | null; horas: number | null }>, horaCitacion: string | null): string | null {
+/** Texto de la alerta con los números reales de la regla. */
+export function mensajeSupuestas(n: number, base: number, extras: Extras = EXTRAS) {
+  if (!n) return null;
+  const quien = n === 1 ? "1 persona no traía horas" : `${n} personas no traían horas`;
+  return `${quien}: base ${formatHoras(base)} h, AC +${formatHoras(extras.ac)} h y C +${formatHoras(extras.c)} h.`;
+}
+
+/**
+ * Prepara el personal leído del archivo para la tabla editable:
+ * - Quien trae horas (o llegada y salida) las conserva.
+ * - Quien no trae horas queda en modo automático: A = base, AC = base + 1, C = base + 2.
+ * - P.P y DESEMP: 5 si vienen vacíos.
+ * - Salida sugerida: la más escrita en el archivo o, si no hay, citación + horas base.
+ */
+export function prepararPersonal<T extends Leido>(rows: T[], horaCitacion: string | null, extras: Extras = EXTRAS) {
+  const base = horasBase(rows);
+  let auto = 0;
+  const out = rows.map((r) => {
+    const propias = r.horas ?? diffHoras(r.llegada, r.salida);
+    if (propias == null) auto++;
+    return {
+      ...r,
+      horas: propias ?? horasPorCargo(r.cargo, base, extras),
+      auto: propias == null,
+      pp: r.pp.trim() || "5",
+      desempeno: r.desempeno.trim() || "5",
+    };
+  });
+  const msg = mensajeSupuestas(auto, base, extras);
+  return { rows: out, base, salida: salidaSugerida(rows, horaCitacion, base), supuestos: msg ? [msg] : [] };
+}
+
+/** Salida común: la más escrita en el archivo o, si no hay, citación + horas base. */
+export function salidaSugerida(rows: Array<{ salida?: string | null }>, horaCitacion: string | null, base: number): string | null {
   const escrita = moda(rows.map((r) => r.salida).filter((s): s is string => !!s));
   if (escrita) return escrita;
-  const base = moda(rows.map((r) => r.horas).filter((h): h is number => h != null && h > 0));
-  return horaCitacion && base != null ? fromMin(toMin(horaCitacion) + base * 60) : null;
+  return horaCitacion ? fromMin(toMin(horaCitacion) + base * 60) : null;
 }
 
 export interface Persona {

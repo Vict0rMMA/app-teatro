@@ -165,14 +165,14 @@ export default function HorasPage() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-faint">Mis horas</p>
           <div className="mt-1 flex items-center gap-1">
             <button onClick={() => moveMonth(-1)} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-subtle hover:text-fg" aria-label="Mes anterior">
               <IconChevron className="rotate-180" />
             </button>
-            <h1 className="min-w-[200px] text-center text-2xl font-bold sm:text-left">
+            <h1 className="min-w-[180px] text-2xl font-bold">
               {MESES[ym.m]} {ym.y}
             </h1>
             <button onClick={() => moveMonth(1)} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-subtle hover:text-fg" aria-label="Mes siguiente">

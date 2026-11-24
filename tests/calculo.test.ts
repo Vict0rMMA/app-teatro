@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularRegistro, prepararPersonal } from "@/lib/registro/calculo";
+import { calcularRegistro, horasPorCargo, prepararPersonal } from "@/lib/registro/calculo";
 
 const leido = (cargo: "C" | "AC" | "A", extra: object = {}) => ({
   nombre: "x",
@@ -13,23 +13,42 @@ const leido = (cargo: "C" | "AC" | "A", extra: object = {}) => ({
 });
 
 describe("prepararPersonal", () => {
-  it("sin horas: supone C 6, AC 5, A 4 y sugiere salida = citación + grupo base", () => {
+  it("sin horas: base 4 → A 4, AC 5, C 6 y salida = citación + base", () => {
     const r = prepararPersonal([leido("C"), leido("AC"), leido("A"), leido("A"), leido("A")], "18:30");
+    expect(r.base).toBe(4);
     expect(r.rows.map((x) => x.horas)).toEqual([6, 5, 4, 4, 4]);
-    expect(r.rows.every((x) => x.supuesta && x.pp === "5" && x.desempeno === "5")).toBe(true);
+    expect(r.rows.every((x) => x.auto && x.pp === "5" && x.desempeno === "5")).toBe(true);
     expect(r.salida).toBe("22:30");
-    expect(r.supuestos).toHaveLength(1);
+    expect(r.supuestos).toEqual(["5 personas no traían horas: base 4 h, AC +1 h y C +2 h."]);
   });
 
-  it("respeta horas y desempeño del archivo y usa la salida escrita más común", () => {
-    const r = prepararPersonal(
-      [leido("C", { horas: 7, pp: "4" }), leido("A", { llegada: "18:00", salida: "22:00" }), leido("A", { horas: 4, salida: "22:00" })],
-      "18:00",
-    );
-    expect(r.rows.map((x) => x.horas)).toEqual([7, 4, 4]);
+  it("la base sale de las horas de los acomodadores del archivo: base 6 → AC 7, C 8", () => {
+    const r = prepararPersonal([leido("C"), leido("AC"), leido("A", { horas: 6 }), leido("A", { horas: 6 }), leido("A", { horas: 5 })], "17:00");
+    expect(r.base).toBe(6);
+    expect(r.rows.map((x) => x.horas)).toEqual([8, 7, 6, 6, 5]);
+    expect(r.rows.map((x) => x.auto)).toEqual([true, true, false, false, false]);
+    expect(r.salida).toBe("23:00");
+    expect(r.supuestos).toEqual(["2 personas no traían horas: base 6 h, AC +1 h y C +2 h."]);
+  });
+
+  it("no sobrescribe horas escritas y respeta los extras configurados", () => {
+    const r = prepararPersonal([leido("C", { horas: 7, pp: "4" }), leido("AC"), leido("A", { llegada: "18:00", salida: "22:00" })], "18:00", { ac: 2, c: 3 });
+    expect(r.rows.map((x) => x.horas)).toEqual([7, 6, 4]);
     expect(r.rows[0].pp).toBe("4");
+    expect(r.supuestos).toEqual(["1 persona no traía horas: base 4 h, AC +2 h y C +3 h."]);
+  });
+
+  it("usa la salida escrita más común del archivo", () => {
+    const r = prepararPersonal([leido("A", { horas: 4, salida: "22:00" }), leido("A", { horas: 4, salida: "22:00" })], "18:30");
     expect(r.salida).toBe("22:00");
     expect(r.supuestos).toEqual([]);
+  });
+});
+
+describe("horasPorCargo", () => {
+  it("A = base, AC = base + 1, C = base + 2", () => {
+    expect([horasPorCargo("A", 4), horasPorCargo("AC", 4), horasPorCargo("C", 4)]).toEqual([4, 5, 6]);
+    expect([horasPorCargo("A", 6), horasPorCargo("AC", 6), horasPorCargo("C", 6)]).toEqual([6, 7, 8]);
   });
 });
 

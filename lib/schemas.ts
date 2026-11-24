@@ -62,6 +62,11 @@ export interface Defaults {
   reclamos: string;
   sugerencias: string;
   valorHora: number;
+  /** horas extra sobre la base: AC = base + extraAC, C = base + extraC */
+  extraAC: number;
+  extraC: number;
+  /** significado de la columna UBI (letra → nombre). Solo informativo. */
+  ubicaciones: Record<string, string>;
 }
 
 export const DEFAULTS: Defaults = {
@@ -71,10 +76,13 @@ export const DEFAULTS: Defaults = {
   reclamos: "El público asistente no presentó ninguna queja ni sugerencias.",
   sugerencias: "No hay sugerencias por parte de los coordinadores.",
   valorHora: 10_000,
+  extraAC: 1,
+  extraC: 2,
+  ubicaciones: { S: "Seguidores" },
 };
 
 export function withDefaults(d?: Partial<Defaults> | null): Defaults {
-  return { ...DEFAULTS, ...(d ?? {}) };
+  return { ...DEFAULTS, ...(d ?? {}), ubicaciones: { ...DEFAULTS.ubicaciones, ...(d?.ubicaciones ?? {}) } };
 }
 
 export const LUGARES_INICIALES = ["Teatro Universidad de Medellín", "Favor a coordinadores", "Otro"];
