@@ -109,7 +109,10 @@ function render(template: string, data: Record<string, unknown>, modules: unknow
 }
 
 export function renderTemplate(name: TemplateName, data: Record<string, unknown>, firma: Buffer | null): Buffer {
-  const box = meta[name].firma;
+  // La firma puede crecer un poco más que el recuadro de la plantilla (que es diminuto en
+  // LLAVES) sin deformarse: 1,6× de ancho y 1,15× de alto caben en las celdas originales.
+  const base = meta[name].firma;
+  const box = { width: Math.round(base.width * 1.6), height: Math.round(base.height * 1.15) };
   const image = firma ?? BLANK_PNG;
   // El módulo trata cualquier objeto como imagen ya resuelta, así que el valor del
   // marcador es un texto y el Buffer sale de aquí.
@@ -117,9 +120,9 @@ export function renderTemplate(name: TemplateName, data: Record<string, unknown>
     centered: false,
     getImage: () => image,
     getSize: (img: Buffer) => {
-      if (img === BLANK_PNG) return [box.width, box.height];
+      if (img === BLANK_PNG) return [base.width, base.height];
       const size = imageSize(img);
-      return size ? fitInBox(size, box) : [box.width, box.height];
+      return size ? fitInBox(size, box) : [base.width, base.height];
     },
   });
   return render(name, { ...data, firma: "firma" }, [imageModule]);

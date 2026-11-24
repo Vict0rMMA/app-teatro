@@ -12,7 +12,7 @@ export interface SignatureCanvasHandle {
   toPng: () => Promise<Blob | null>;
 }
 
-const PEN_COLOR = "#16161a";
+const PEN_COLOR = "#12121c";
 /** Tras usar el lápiz, los toques con el dedo se ignoran este tiempo (rechazo de palma). */
 const PALM_WINDOW_MS = 1500;
 
@@ -35,8 +35,8 @@ export const SignatureCanvas = forwardRef<SignatureCanvasHandle, { onChange?: (e
       const pad = new SignaturePad(canvas, {
         penColor: PEN_COLOR,
         backgroundColor: "rgba(0,0,0,0)",
-        minWidth: 0.7,
-        maxWidth: 2.8,
+        minWidth: 1.1,
+        maxWidth: 3.4,
         velocityFilterWeight: 0.7,
         minDistance: 2,
         throttle: 8,

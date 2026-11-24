@@ -214,9 +214,13 @@ export function watchEvent(id: string, cb: (e: EventDoc | null) => void, onError
   );
 }
 
-export async function getStaff(eventId: string): Promise<StaffDoc[]> {
-  const s = await getDocs(query(collection(db(), "events", eventId, "staff"), orderBy("orden")));
-  return s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<StaffDoc, "id">) }));
+/**
+ * Personal de un evento. Las reglas solo permiten listar documentos propios, así que la
+ * consulta debe filtrar por uid; el orden se aplica aquí para no necesitar otro índice.
+ */
+export async function getStaff(eventId: string, uid: string): Promise<StaffDoc[]> {
+  const s = await getDocs(query(collection(db(), "events", eventId, "staff"), where("uid", "==", uid)));
+  return s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<StaffDoc, "id">) })).sort((a, b) => a.orden - b.orden);
 }
 
 /** Todo el personal de todos los eventos del usuario (para la búsqueda por persona). */

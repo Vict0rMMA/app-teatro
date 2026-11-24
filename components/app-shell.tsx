@@ -68,25 +68,39 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh md:pl-[232px]">
       {/* Barra lateral (escritorio) */}
       <aside className="fixed inset-y-0 left-0 hidden w-[232px] flex-col border-r border-border bg-surface md:flex">
-        <div className="flex h-14 items-center px-4">
+        <div className="h-1 bg-brand" />
+        <div className="flex h-16 items-center px-4">
           <Link href="/">
             <Logo />
           </Link>
         </div>
-        <nav className="flex-1 space-y-0.5 px-2 py-2">
-          {NAV.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={cx(
-                "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors",
-                isActive(pathname, href) ? "bg-subtle font-medium text-fg" : "text-muted hover:bg-subtle/60 hover:text-fg",
-              )}
-            >
-              <Icon className={isActive(pathname, href) ? "text-brand" : undefined} />
-              {label}
-            </Link>
-          ))}
+        <div className="px-3 pb-3">
+          <Link
+            href="/"
+            className="flex h-9 items-center justify-center gap-2 rounded-md bg-brand text-sm font-bold text-brand-fg transition-colors hover:bg-brand/90"
+          >
+            <IconPlus /> Nueva planilla
+          </Link>
+        </div>
+        <p className="px-5 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wider text-faint">Menú</p>
+        <nav className="flex-1 space-y-0.5 px-3 py-1">
+          {NAV.slice(1).map(({ href, label, icon: Icon }) => {
+            const active = isActive(pathname, href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cx(
+                  "relative flex h-9 items-center gap-2.5 rounded-md px-3 text-sm transition-colors",
+                  active ? "bg-subtle font-bold text-fg" : "text-muted hover:bg-subtle/60 hover:text-fg",
+                )}
+              >
+                {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-brand" />}
+                <Icon className={active ? "text-brand" : undefined} />
+                {label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="border-t border-border p-2">
           <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">

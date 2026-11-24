@@ -86,8 +86,9 @@ export async function loadImage(file: File, maxSide = 1600): Promise<HTMLCanvasE
 }
 
 /**
- * Quita el fondo claro: lo más claro que `threshold` queda transparente, con un
- * borde suave para que la tinta no se vea pixelada. La tinta se oscurece un poco.
+ * Quita el fondo claro y deja la tinta sólida: lo más claro que `threshold` queda
+ * transparente; el resto se pinta casi negro y opaco, con borde suave solo en la orilla
+ * del trazo. Así una foto con tinta gris o azul se ve nítida en Word.
  */
 export function removeBackground(src: HTMLCanvasElement, threshold: number): HTMLCanvasElement {
   const out = document.createElement("canvas");
@@ -97,14 +98,14 @@ export function removeBackground(src: HTMLCanvasElement, threshold: number): HTM
   ctx.drawImage(src, 0, 0);
   const img = ctx.getImageData(0, 0, out.width, out.height);
   const d = img.data;
-  const soft = 40;
+  const edge = 28; // ancho de la transición en niveles de gris
   for (let i = 0; i < d.length; i += 4) {
     const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-    const a = lum >= threshold ? 0 : Math.min(1, (threshold - lum) / soft);
+    const a = lum >= threshold ? 0 : Math.min(1, (threshold - lum) / edge);
+    d[i] = 18;
+    d[i + 1] = 18;
+    d[i + 2] = 28;
     d[i + 3] = Math.round(a * 255);
-    d[i] = Math.round(d[i] * 0.6);
-    d[i + 1] = Math.round(d[i + 1] * 0.6);
-    d[i + 2] = Math.round(d[i + 2] * 0.6);
   }
   ctx.putImageData(img, 0, 0);
   return out;
