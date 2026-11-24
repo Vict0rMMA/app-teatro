@@ -62,13 +62,27 @@ function OAuthButton({ kind, label }: { kind: "google" | "microsoft"; label: str
   );
 }
 
+/**
+ * Proveedores activos en Firebase Auth. Se controla con NEXT_PUBLIC_AUTH_PROVIDERS
+ * ("google,microsoft") para no mostrar botones de un método que aún no está activado.
+ */
+const PROVIDERS = (process.env.NEXT_PUBLIC_AUTH_PROVIDERS ?? "google,microsoft")
+  .split(",")
+  .map((p) => p.trim())
+  .filter((p): p is "google" | "microsoft" => p === "google" || p === "microsoft");
+
 /** Google (Gmail) y Microsoft (Outlook/Hotmail). Sin SMS: tiene costo. */
 export function OAuthButtons({ verb = "Continuar" }: { verb?: string }) {
+  if (!PROVIDERS.length) return null;
   return (
-    <div className="space-y-2">
-      <OAuthButton kind="google" label={`${verb} con Google`} />
-      <OAuthButton kind="microsoft" label={`${verb} con Microsoft`} />
-    </div>
+    <>
+      <div className="space-y-2">
+        {PROVIDERS.map((k) => (
+          <OAuthButton key={k} kind={k} label={`${verb} con ${k === "google" ? "Google" : "Microsoft"}`} />
+        ))}
+      </div>
+      <Divider />
+    </>
   );
 }
 
