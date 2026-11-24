@@ -1,6 +1,7 @@
 "use client";
 
-import { formatCOP, hora12, duracionCampo, formatDuracion, parseDuracion } from "@/lib/format";
+import { useEffect, useState } from "react";
+import { formatCOP, hora12, duracionCampo, formatDuracion, parseDuracion, diffHoras } from "@/lib/format";
 import { horasPorCargo, type Extras, type FilaCalculada } from "@/lib/registro/calculo";
 import { IconPlus, IconTrash } from "./icons";
 import { Button, Input, Select, cx } from "./ui";
@@ -56,6 +57,7 @@ export function RegistroTable({
   base,
   extras,
   ubicaciones,
+  salida,
 }: {
   rows: PersonaDraft[];
   filas: FilaCalculada[];
@@ -65,6 +67,8 @@ export function RegistroTable({
   base: number;
   extras: Extras;
   ubicaciones: Record<string, string>;
+  /** salida común: la llegada que escribas se resta de aquí para sacar las horas */
+  salida: string | null;
 }) {
   // Escribir horas a mano saca la fila del modo automático; la regla ya no se le vuelve a aplicar.
   const update = (key: string, patch: Partial<PersonaDraft>) =>
@@ -81,7 +85,7 @@ export function RegistroTable({
               <th className="w-16 py-2 font-medium">Cargo</th>
               <th className="w-14 py-2 font-medium">UBI</th>
               <th className="w-24 py-2 font-medium">Horas</th>
-              <th className="w-[84px] py-2 font-medium">Llegada</th>
+              <th className="w-28 py-2 font-medium">Llegada</th>
               <th className="w-[84px] py-2 font-medium">Salida</th>
               <th className="w-24 py-2 text-right font-medium">Valor</th>
               <th className="w-14 py-2 pl-3 font-medium">P.P</th>
@@ -138,7 +142,18 @@ export function RegistroTable({
                     />
                     {r.auto && <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase text-faint">auto</span>}
                   </td>
-                  <td className="tabular py-1 pl-2 text-muted">{f?.llegada ? hora12(f.llegada, true) : "—"}</td>
+                  <td className="py-1 pr-1">
+                    <LlegadaInput
+                      value={f?.llegada ?? ""}
+                      salida={salida}
+                      label={`Llegada de ${r.nombre || `la fila ${i + 1}`}`}
+                      onCommit={(llegada) => {
+                        // Llegada escrita → horas = salida − llegada (ej. 1:30 a 5:30 = 4 h).
+                        const h = diffHoras(llegada, salida);
+                        if (h != null && h > 0) update(r.key, { horas: duracionCampo(h) });
+                      }}
+                    />
+                  </td>
                   <td className="tabular py-1 pl-2 text-muted">{f?.salida ? hora12(f.salida, true) : "—"}</td>
                   <td className="tabular py-1 pr-1 text-right">{formatCOP(f?.valor)}</td>
                   <td className="py-1 pl-3 pr-1">
@@ -183,5 +198,46 @@ export function RegistroTable({
         Agregar persona
       </Button>
     </div>
+  );
+}
+
+/**
+ * Hora de llegada editable: las horas pasan a ser salida − llegada. Mientras tiene el foco,
+ * el campo conserva lo que escribes (no salta entre teclas aunque la tabla se recalcule).
+ */
+function LlegadaInput({ value, salida, label, onCommit }: { value: string; salida: string | null; label: string; onCommit: (llegada: string) => void }) {
+  const [text, setText] = useState(value);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (!editing) setText(value);
+  }, [value, editing]);
+
+  function commit() {
+    setEditing(false);
+    if (text && text !== value) onCommit(text);
+  }
+
+  return (
+    <Input
+      type="time"
+      className={cx(cell, "tabular")}
+      value={text}
+      disabled={!salida}
+      title={salida ? `Escribe la llegada: las horas se calculan hasta la salida (${hora12(salida, true)}).` : "Primero define la salida"}
+      onFocus={() => setEditing(true)}
+      onChange={(e) => {
+        // El texto se queda como lo escribes; las horas se actualizan apenas la hora está completa.
+        setText(e.target.value);
+        if (/^\d{2}:\d{2}$/.test(e.target.value)) onCommit(e.target.value);
+      }}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      aria-label={label}
+    />
   );
 }

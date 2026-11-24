@@ -379,7 +379,7 @@ export default function NuevaPlanillaPage() {
           <StepHeader
             n={2}
             title="Registro de personal"
-            description={`A = base · AC = base + ${extras.ac} · C = base + ${extras.c}. Valor por hora ${formatCOP(defaults.valorHora)}.`}
+            description={`Escribe la llegada de cada persona o sus horas: el resto se calcula. A = base · AC = base + ${extras.ac} · C = base + ${extras.c}. Valor por hora ${formatCOP(defaults.valorHora)}.`}
             action={
               <div className="flex items-start gap-3">
                 <Field className="w-24" label="Horas base" hint={baseValida ? `AC +${extras.ac} · C +${extras.c}` : undefined} error={baseValida ? null : "Entre 1 y 16"}>
@@ -435,6 +435,7 @@ export default function NuevaPlanillaPage() {
               base={base}
               extras={extras}
               ubicaciones={defaults.ubicaciones}
+              salida={salida || null}
             />
             {errors.personas && <p className="mt-2 text-xs text-danger">{errors.personas}</p>}
           </div>
