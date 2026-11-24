@@ -217,10 +217,19 @@ export default function PlanillaPage() {
             <h2 className="mb-3 text-sm font-bold">Archivos</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               {FILES.map((f) => (
-                <div key={f.key} className="group flex gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-fg/20">
+                <div
+                  key={f.key}
+                  className={cx(
+                    "group flex gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-fg/20",
+                    f.key === "registro" && "border-brand/40 bg-brand-soft/20 p-5 sm:col-span-2 sm:items-center",
+                  )}
+                >
                   <button
                     onClick={() => setPreview(f.key)}
-                    className="relative grid h-[68px] w-[54px] shrink-0 place-items-center rounded border border-border bg-white"
+                    className={cx(
+                      "relative grid h-[68px] w-[54px] shrink-0 place-items-center rounded border border-border bg-white",
+                      f.key === "registro" && "h-24 w-20",
+                    )}
                     aria-label={`Previsualizar ${f.label}`}
                   >
                     <span className="absolute right-0 top-0 h-3 w-3 rounded-bl border-b border-l border-border bg-subtle" />
@@ -232,8 +241,9 @@ export default function PlanillaPage() {
                     </span>
                   </button>
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <p className="text-sm font-bold">{f.label}</p>
-                    <p className="text-xs text-muted">{f.desc}</p>
+                      <p className={cx("text-sm font-bold", f.key === "registro" && "text-lg")}>{f.key === "registro" ? "REGISTRO" : f.label}</p>
+                    <p className={cx("text-xs text-muted", f.key === "registro" && "text-[13px]")}>{f.key === "registro" ? "Documento base: personal, horas y pagos." : f.desc}</p>
+                    {f.key === "registro" && <p className="mt-1 text-xs text-muted">Las demás planillas se preparan con los datos de este registro.</p>}
                     {f.key === "registro" && (
                       <p className={cx("mt-0.5 text-[11px]", completo ? "text-ok" : "text-faint")}>
                         {completo ? "Completo con cédulas: descárgalo ahora" : "Sin cédulas ni teléfonos"}
@@ -243,7 +253,10 @@ export default function PlanillaPage() {
                       <button
                         onClick={() => download(f.key)}
                         disabled={busy === f.key}
-                        className="inline-flex h-7 items-center gap-1.5 rounded px-2 text-xs font-bold text-fg hover:bg-subtle disabled:opacity-60"
+                        className={cx(
+                          "inline-flex h-7 items-center gap-1.5 rounded px-2 text-xs font-bold text-fg hover:bg-subtle disabled:opacity-60",
+                          f.key === "registro" && "h-9 bg-brand px-3 text-brand-fg hover:bg-brand/90",
+                        )}
                       >
                         {busy === f.key ? <Spinner className="h-3 w-3" /> : <IconDownload width={13} height={13} />} Descargar
                       </button>
