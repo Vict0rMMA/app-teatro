@@ -19,6 +19,14 @@ export interface AuthedUser {
   email?: string;
 }
 
+/** Restringe herramientas administrativas a una cuenta verificada configurada en el servidor. */
+export function requireAdmin(user: AuthedUser) {
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLocaleLowerCase("en-US");
+  if (!adminEmail || !user.email || user.email.toLocaleLowerCase("en-US") !== adminEmail) {
+    throw new HttpError(403, "No tienes acceso a esta sección.", "SOLO_ADMIN");
+  }
+}
+
 /** Verifica el ID token de Firebase (y App Check si está activo) en cada route handler. */
 export async function requireUser(req: Request): Promise<AuthedUser> {
   const header = req.headers.get("authorization") ?? "";

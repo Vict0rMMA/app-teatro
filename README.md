@@ -39,6 +39,7 @@ npm test                     # parsers, cálculo y generación de planillas
 | --- | --- |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` `…_AUTH_DOMAIN` `…_PROJECT_ID` `…_MESSAGING_SENDER_ID` `…_APP_ID` | App web de Firebase |
 | `FIREBASE_PROJECT_ID` `FIREBASE_CLIENT_EMAIL` `FIREBASE_PRIVATE_KEY` | Clave de la cuenta de servicio (`FIREBASE_PRIVATE_KEY` completa, con los `\n`) |
+| `ADMIN_EMAIL` `NEXT_PUBLIC_ADMIN_EMAIL` | Correo verificado de Victor. El primero protege el endpoint en el servidor; el segundo solo muestra el enlace de administración en la interfaz. |
 | `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` `APP_CHECK_ENFORCE` | App Check (opcional) |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Contacto del aviso de privacidad |
 

@@ -15,6 +15,7 @@ const NAV = [
   { href: "/horas", label: "Mis horas", short: "Horas", icon: IconClock },
   { href: "/personal", label: "Personal", short: "Personal", icon: IconUsers },
   { href: "/ajustes", label: "Ajustes", short: "Ajustes", icon: IconSettings },
+  { href: "/admin", label: "Administración", short: "Admin", icon: IconUsers },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -57,6 +58,8 @@ function OfflineBanner() {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { profile, user, signOut } = useSession();
+  const isAdmin = !!user.email && user.email.toLocaleLowerCase("en-US") === process.env.NEXT_PUBLIC_ADMIN_EMAIL?.trim().toLocaleLowerCase("en-US");
+  const nav = isAdmin ? NAV : NAV.filter(({ href }) => href !== "/admin");
   const initials = profile.nombre
     .split(/\s+/)
     .slice(0, 2)
@@ -84,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <p className="px-5 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wider text-faint">Menú</p>
         <nav className="flex-1 space-y-0.5 px-3 py-1">
-          {NAV.slice(1).map(({ href, label, icon: Icon }) => {
+          {nav.slice(1).map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link
@@ -138,8 +141,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 sm:px-6 md:pb-12 md:pt-10">{children}</main>
 
       {/* Pestañas (móvil) */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        {NAV.map(({ href, short, icon: Icon }) => {
+      <nav className={cx("fixed inset-x-0 bottom-0 z-30 grid border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden", isAdmin ? "grid-cols-6" : "grid-cols-5")}>
+        {nav.map(({ href, short, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
             <Link

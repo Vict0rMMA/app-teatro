@@ -96,7 +96,7 @@ export function withDefaults(d?: Partial<Defaults> | null): Defaults {
   };
 }
 
-export const LUGARES_INICIALES = ["Teatro Universidad de Medellín", "Favor a coordinadores", "Otro"];
+export const LUGARES_INICIALES = ["Teatro Universidad de Medellín", "OPC", "Favor a coordinadores"];
 export const LUGAR_TEATRO = LUGARES_INICIALES[0];
 
 /** Firma en base64 dentro de users/{uid}.firma: máximo 150 KB. */
