@@ -54,21 +54,17 @@ export const Button = forwardRef<
     >
       {loading ? <Spinner /> : icon}
       {children}
-      {loading && (
-        <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] overflow-hidden">
-          <span className="block h-full w-1/3 animate-barra bg-current opacity-50" />
-        </span>
-      )}
     </button>
   );
 });
 
+/** Aro que gira, hecho con borde CSS: se ve liso y nítido a cualquier tamaño. */
 export function Spinner({ className }: { className?: string }) {
   return (
-    <svg className={cx("h-4 w-4 animate-[spin_0.8s_linear_infinite]", className)} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2.5" />
-      <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-    </svg>
+    <span
+      aria-hidden
+      className={cx("inline-block h-4 w-4 shrink-0 animate-[spin_0.7s_linear_infinite] rounded-full border-2 border-current border-r-transparent opacity-90", className)}
+    />
   );
 }
 
