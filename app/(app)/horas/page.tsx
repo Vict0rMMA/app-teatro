@@ -64,6 +64,29 @@ export default function HorasPage() {
 
   useEffect(() => watchWorkLogs(user.uid, setLogs), [user.uid]);
 
+  // Turno a medio llenar: sobrevive a recargar la página (solo en este equipo, caduca en 12 h).
+  const claveTurno = `turno-en-curso:${user.uid}`;
+  const [turnoListo, setTurnoListo] = useState(false);
+  useEffect(() => {
+    try {
+      const g = JSON.parse(localStorage.getItem(claveTurno) ?? "null") as { en: number; form: FormState } | null;
+      if (g && Date.now() - g.en < 12 * 60 * 60 * 1000) setForm(g.form);
+      else localStorage.removeItem(claveTurno);
+    } catch {
+      /* sin almacenamiento */
+    }
+    setTurnoListo(true);
+  }, [claveTurno]);
+  useEffect(() => {
+    if (!turnoListo) return;
+    try {
+      if (form) localStorage.setItem(claveTurno, JSON.stringify({ en: Date.now(), form }));
+      else localStorage.removeItem(claveTurno);
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, [turnoListo, claveTurno, form]);
+
   const placeName = useMemo(() => new Map((places ?? []).map((p) => [p.id, p.nombre])), [places]);
   const mes = ymKey(ym.y, ym.m);
   const delMes = useMemo(

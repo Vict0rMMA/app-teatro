@@ -3,10 +3,10 @@
 // - Estáticos de Next (/_next/static), íconos y logos: caché primero (tienen hash).
 // - /api y Firebase nunca se cachean: los datos offline de "Mis horas" los guarda Firestore en IndexedDB.
 
-const VERSION = "v1";
+const VERSION = "v2";
 const PAGES = `pages-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
-const PRECACHE = ["/", "/horas", "/manifest.webmanifest", "/logo-teatro.png", "/icons/icon-192.png"];
+const PRECACHE = ["/", "/horas", "/manifest.webmanifest", "/logo-teatro-udem.png", "/icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

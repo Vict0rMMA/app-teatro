@@ -46,10 +46,10 @@ function isActive(pathname: string, href: string) {
 function Logo({ className }: { className?: string }) {
   return (
     <Image
-      src="/logo-teatro.png"
+      src="/logo-teatro-udem.png"
       alt="Teatro Universidad de Medellín"
-      width={150}
-      height={42}
+      width={151}
+      height={48}
       priority
       className={cx("w-auto dark:rounded-ctl dark:bg-white dark:px-1.5 dark:py-1", className)}
     />

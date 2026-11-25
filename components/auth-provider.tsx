@@ -98,10 +98,10 @@ function FullScreenLoader() {
     <div role="status" aria-label="Cargando" className="grid min-h-dvh place-items-center bg-bg">
       <div className="flex flex-col items-center gap-5">
         <Image
-          src="/logo-teatro.png"
+          src="/logo-teatro-udem.png"
           alt="Teatro Universidad de Medellín"
-          width={180}
-          height={50}
+          width={189}
+          height={60}
           priority
           className="h-10 w-auto dark:rounded-ctl dark:bg-white dark:px-2 dark:py-1.5"
         />

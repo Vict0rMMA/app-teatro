@@ -23,7 +23,7 @@ export function AuthCard({
     <div className="grid min-h-dvh bg-bg lg:grid-cols-[minmax(360px,34%)_1fr]">
       <aside className="hidden flex-col bg-[#c8201a] p-12 text-white lg:flex">
         <Link href="/" className="w-fit rounded-ctl bg-white px-3 py-2">
-          <Image src="/logo-teatro.png" alt="Teatro Universidad de Medellín" width={240} height={66} className="h-14 w-auto" priority />
+          <Image src="/logo-teatro-udem.png" alt="Teatro Universidad de Medellín" width={252} height={80} className="h-14 w-auto" priority />
         </Link>
         <div className="mt-auto max-w-md">
           <p className="text-[12px] uppercase tracking-[0.14em] text-white/70">Teatro Gabriel Obregón Botero</p>
@@ -38,7 +38,7 @@ export function AuthCard({
         <EscenarioFondo />
 
         <Link href="/" className="relative z-40 ml-6 mt-[calc(92px+env(safe-area-inset-top))] w-fit rounded-ctl bg-white px-2.5 py-1.5 lg:hidden">
-          <Image src="/logo-teatro.png" alt="Teatro Universidad de Medellín" width={160} height={44} className="h-8 w-auto" priority />
+          <Image src="/logo-teatro-udem.png" alt="Teatro Universidad de Medellín" width={151} height={48} className="h-8 w-auto" priority />
         </Link>
 
         <main className="relative z-10 flex flex-1 items-center justify-center px-5 pb-16 pt-8 lg:pt-24">

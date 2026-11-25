@@ -16,6 +16,7 @@ import { diffHoras, fechaWhatsapp, findBestNameMatch, formatCOP, formatMiles, ho
 import { calcularRegistro, fromMin, HORAS_BASE, mensajeSupuestas, prepararPersonal, salidaSugerida, toMin } from "@/lib/registro/calculo";
 import type { Registro, StaffRow } from "@/lib/registro/types";
 import { guardarRegistro, base64ToBlob } from "@/lib/registro-memoria";
+import { borrarBorrador, guardarBorrador, leerBorrador } from "@/lib/borrador";
 import { withDefaults, type GenerateInput } from "@/lib/schemas";
 
 type LocKey = "lc" | "ll" | "bc" | "bl";
@@ -84,6 +85,37 @@ export default function NuevaPlanillaPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState(false);
   const formTop = useRef<HTMLDivElement>(null);
+
+  // ---- Borrador: lo que se está llenando sobrevive a recargar o cerrar la pestaña ----
+  const claveBorrador = `nueva-planilla:${user.uid}`;
+  const [restaurado, setRestaurado] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    leerBorrador<{ draft: Draft; mine: MyHours; manualReason: string | null; firmaEvento: Blob | null; showLocs: boolean }>(claveBorrador).then((b) => {
+      if (!vivo) return;
+      if (b?.draft) {
+        setDraft(b.draft);
+        setMine(b.mine);
+        setManualReason(b.manualReason);
+        setFirmaEvento(b.firmaEvento);
+        setShowLocs(b.showLocs);
+        toast.info("Seguimos donde ibas", "Recuperamos la planilla que estabas llenando.");
+      }
+      setRestaurado(true);
+    });
+    return () => {
+      vivo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveBorrador]);
+  useEffect(() => {
+    if (!restaurado) return; // no pisar el borrador antes de leerlo
+    const t = window.setTimeout(() => {
+      if (draft && mine) void guardarBorrador(claveBorrador, { draft, mine, manualReason, firmaEvento, showLocs });
+      else void borrarBorrador(claveBorrador);
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [restaurado, claveBorrador, draft, mine, manualReason, firmaEvento, showLocs]);
   // Paso visible en pantalla, para el stepper.
   const [paso, setPaso] = useState<string>("paso-archivo");
   const hayDraft = !!draft;
@@ -306,6 +338,7 @@ export default function NuevaPlanillaPage() {
         alertas: data.alertas ?? [],
         sinFirma: !!data.sinFirma,
       });
+      await borrarBorrador(claveBorrador);
       toast.success("Planillas generadas", mine.guardar ? "Tus horas quedaron guardadas en Mis horas." : undefined);
       router.push(`/planillas/${data.eventId}`);
     } catch (err) {
@@ -313,6 +346,8 @@ export default function NuevaPlanillaPage() {
       setGenerating(false);
     }
   }
+
+  if (!restaurado) return null;
 
   if (!draft || !mine) {
     return (
