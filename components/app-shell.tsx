@@ -7,16 +7,16 @@ import { useEffect, useState, type ReactNode } from "react";
 import { rutaInicial, type Seccion } from "@/lib/permisos";
 import { useSession } from "./auth-provider";
 import { usePermisos } from "./permisos";
-import { IconClock, IconHistory, IconLogout, IconPlus, IconReceipt, IconSettings } from "./icons";
+import { IconClock, IconHistory, IconLogout, IconPlus, IconReceipt, IconSettings, IconUsers } from "./icons";
 import { ThemeToggle } from "./theme";
 import { cx } from "./ui";
 
-const NAV: Array<{ href: string; label: string; seccion?: Seccion; admin?: boolean }> = [
-  { href: "/planillas", label: "Historial", seccion: "planillas" },
-  { href: "/horas", label: "Mis horas", seccion: "horas" },
-  { href: "/cuenta-cobro", label: "Cuenta de cobro", seccion: "cobro" },
-  { href: "/ajustes", label: "Ajustes", seccion: "ajustes" },
-  { href: "/admin", label: "Administración", admin: true },
+const NAV: Array<{ href: string; label: string; icon: typeof IconClock; seccion?: Seccion; admin?: boolean }> = [
+  { href: "/planillas", label: "Historial", icon: IconHistory, seccion: "planillas" },
+  { href: "/horas", label: "Mis horas", icon: IconClock, seccion: "horas" },
+  { href: "/cuenta-cobro", label: "Cuenta de cobro", icon: IconReceipt, seccion: "cobro" },
+  { href: "/ajustes", label: "Ajustes", icon: IconSettings, seccion: "ajustes" },
+  { href: "/admin", label: "Administración", icon: IconUsers, admin: true },
 ];
 
 /** "Víctor Manuel Monsalve Aguilar" → "Víctor Monsalve" (nombre y primer apellido). */
@@ -93,37 +93,40 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh md:pl-[208px]">
       {/* Barra lateral (escritorio) */}
       <aside className="fixed inset-y-0 left-0 hidden w-[208px] flex-col border-r border-border bg-bg md:flex">
-        <div className="px-5 pb-6 pt-6">
+        <div className="px-5 pb-7 pt-7">
           <Link href={inicio} aria-label="Inicio">
             <Logo className="h-9" />
           </Link>
         </div>
-        <div className={cx("px-5 pb-5", !puede("planillas") && "hidden")}>
+        <div className={cx("px-3 pb-6", !puede("planillas") && "hidden")}>
           <Link
             href="/"
+            aria-current={pathname === "/" ? "page" : undefined}
             className={cx(
-              "inline-flex h-9 items-center gap-1.5 rounded-ctl border px-3 text-[13px] font-medium transition-colors duration-100",
-              pathname === "/" ? "border-brand bg-brand text-brand-fg" : "border-brand/40 text-brand hover:border-brand hover:bg-brand-soft/60",
+              "flex h-10 w-full items-center justify-center gap-2 rounded-ctl text-[13px] font-bold text-brand-fg transition-colors duration-100",
+              pathname === "/" ? "bg-brand-hover" : "bg-brand hover:bg-brand-hover",
             )}
           >
-            <IconPlus width={14} height={14} /> Nueva planilla
+            <IconPlus width={15} height={15} /> Nueva planilla
           </Link>
         </div>
-        <nav className="flex-1 px-5" aria-label="Secciones">
+        <nav className="flex-1 px-3" aria-label="Secciones">
+          <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-[0.08em] text-faint">Menú</p>
           <ul className="space-y-0.5">
-            {nav.map(({ href, label }) => {
+            {nav.map(({ href, label, icon: Icon, admin }) => {
               const active = isActive(pathname, href);
               return (
-                <li key={href}>
+                <li key={href} className={cx(admin && "mt-3 border-t border-border pt-3")}>
                   <Link
                     href={href}
                     aria-current={active ? "page" : undefined}
                     className={cx(
-                      "group flex h-8 items-center gap-2.5 text-sm transition-colors duration-100",
-                      active ? "font-medium text-fg" : "text-muted hover:text-fg",
+                      "relative flex h-9 items-center gap-3 rounded-ctl px-3 text-[14px] transition-colors duration-100",
+                      active ? "bg-subtle font-bold text-fg" : "text-muted hover:bg-subtle/60 hover:text-fg",
                     )}
                   >
-                    <span aria-hidden className={cx("h-1.5 w-1.5 rounded-full", active ? "bg-brand" : "bg-transparent group-hover:bg-border")} />
+                    {active && <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-brand" />}
+                    <Icon width={17} height={17} className={active ? "text-brand" : ""} />
                     {label}
                   </Link>
                 </li>
@@ -131,27 +134,25 @@ export function AppShell({ children }: { children: ReactNode }) {
             })}
           </ul>
         </nav>
-        <div className="p-3">
-          <div className="rounded-box border border-border bg-surface p-3">
-            <div className="flex items-center gap-2.5" title={profile.nombre}>
-              <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-[13px] font-bold text-brand-fg">
-                {iniciales(profile.nombre)}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-[13px] font-bold leading-tight">{nombreCorto(profile.nombre)}</p>
-                <p className="truncate text-[11px] leading-tight text-muted">{user.email}</p>
-              </div>
+        <div className="border-t border-border px-3 py-3">
+          <div className="flex items-center gap-2.5 rounded-ctl px-2 py-1.5" title={`${profile.nombre} · ${user.email ?? ""}`}>
+            <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-subtle text-[12px] font-bold text-fg">
+              {iniciales(profile.nombre)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-bold leading-tight">{nombreCorto(profile.nombre)}</p>
+              <p className="truncate text-[11px] leading-tight text-muted">{user.email}</p>
             </div>
-            <div className="mt-3 flex items-center gap-1 border-t border-border pt-2">
-              <button
-                onClick={signOut}
-                className="flex h-8 flex-1 items-center gap-2 rounded-ctl px-2 text-[13px] text-muted transition-colors duration-100 hover:bg-subtle hover:text-fg"
-              >
-                <IconLogout width={15} height={15} />
-                Cerrar sesión
-              </button>
-              <ThemeToggle />
-            </div>
+          </div>
+          <div className="mt-1 flex items-center justify-between px-1">
+            <button
+              onClick={signOut}
+              className="flex h-8 items-center gap-2 rounded-ctl px-2 text-[13px] text-muted transition-colors duration-100 hover:bg-subtle hover:text-fg"
+            >
+              <IconLogout width={15} height={15} />
+              Cerrar sesión
+            </button>
+            <ThemeToggle />
           </div>
         </div>
       </aside>
