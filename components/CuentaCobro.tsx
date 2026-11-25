@@ -45,12 +45,6 @@ function firmaDePerfil(base64: string): Promise<Firma> {
 }
 
 const pesos = (n: number) => `$${n.toLocaleString("es-CO")}`;
-const fechaHoy = () => {
-  const d = new Date();
-  const mes = MESES[d.getMonth()];
-  return `${d.getDate()} de ${mes.charAt(0).toUpperCase()}${mes.slice(1)} de ${d.getFullYear()}`;
-};
-
 const ESTADO: Record<Comparacion["estado"], { tone: "ok" | "warn" | "neutral" | "danger"; label: string }> = {
   coincide: { tone: "ok", label: "Coincide" },
   diferente: { tone: "warn", label: "Diferente" },
@@ -75,13 +69,13 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
   const [datos, setDatos] = useState({ celular: "", direccion: "", ciudad: "Medellín - Antioquia" });
   const [usarFirmaPerfil, setUsarFirmaPerfil] = useState(!!profile.firma);
   const [firmaArchivo, setFirmaArchivo] = useState<Firma | null>(null);
-  const [reenvio, setReenvio] = useState({ activo: false, fecha: "", consecutivo: "" });
+  const [reenvio, setReenvio] = useState({ activo: false, consecutivo: "" });
 
   useEffect(() => {
-    if (!res || reenvio.fecha) return;
+    if (!res || reenvio.consecutivo) return;
     const { mes, anio } = res.datos;
-    setReenvio((r) => ({ ...r, fecha: fechaHoy(), consecutivo: `${anio}-${String(mes).padStart(2, "0")}A` }));
-  }, [res, reenvio.fecha]);
+    setReenvio((r) => ({ ...r, consecutivo: `${anio}-${String(mes).padStart(2, "0")}A` }));
+  }, [res, reenvio.consecutivo]);
 
   const onPaste = async (e: ClipboardEvent) => {
     const item = [...e.clipboardData.items].find((i) => i.type.startsWith("image/"));
@@ -152,9 +146,8 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
             nombre,
             cedula,
             ...datos,
-            fechaEmision: reenvio.fecha,
             firma,
-            reenvio: reenvio.activo ? { fecha: reenvio.fecha, consecutivo: reenvio.consecutivo } : undefined,
+            reenvio: reenvio.activo ? { consecutivo: reenvio.consecutivo } : undefined,
           },
         }),
       });
@@ -173,7 +166,7 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
   }
 
   const v = res?.validacion;
-  const listo = !!v?.ok && !!datos.celular.trim() && !!datos.direccion.trim() && !!datos.ciudad.trim() && (!reenvio.activo || (!!reenvio.fecha && !!reenvio.consecutivo));
+  const listo = !!v?.ok && !!datos.celular.trim() && !!datos.direccion.trim() && !!datos.ciudad.trim() && (!reenvio.activo || !!reenvio.consecutivo);
   const comp = useMemo(() => res?.comparacion ?? [], [res]);
   const resumenComp = useMemo(() => {
     const n = (e: Comparacion["estado"]) => comp.filter((c) => c.estado === e).length;
@@ -450,11 +443,10 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
             <div className="mt-6 text-[13px]">
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={reenvio.activo} onChange={(e) => setReenvio({ ...reenvio, activo: e.target.checked })} className="h-4 w-4 accent-[rgb(var(--brand))]" />
-                Es un reenvío por corrección (cambia la fecha y el consecutivo)
+                Es un reenvío por corrección (conserva la fecha del formato; cambia solo el consecutivo)
               </label>
               {reenvio.activo && (
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                  <Field label="Fecha de hoy">{(id) => <Input id={id} value={reenvio.fecha} onChange={(e) => setReenvio({ ...reenvio, fecha: e.target.value })} />}</Field>
                   <Field label="Consecutivo" hint="El de la cuenta original con A al final.">
                     {(id) => <Input id={id} value={reenvio.consecutivo} onChange={(e) => setReenvio({ ...reenvio, consecutivo: e.target.value })} />}
                   </Field>

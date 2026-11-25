@@ -136,10 +136,9 @@ export type DatosPersona = {
   celular: string;
   direccion: string;
   ciudad: string;
-  fechaEmision?: string;
   firma?: { data: Uint8Array; tipo: "png" | "jpeg"; anchoPx: number; altoPx: number };
-  /** Solo para reenvíos: fecha de hoy y consecutivo con sufijo (ej. "2026-10A"). */
-  reenvio?: { fecha: string; consecutivo: string };
+  /** Solo para reenvíos: el consecutivo de la cuenta original con sufijo A. */
+  reenvio?: { consecutivo: string };
 };
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -257,18 +256,7 @@ export async function generarDocx(plantilla: ArrayBuffer | Uint8Array, v: Valida
   ];
   for (const [i, [a, b]] of reemplazos.entries()) x = reemplazarTexto(x, a, b, i === 4);
 
-  const primeraFila = v.grupos[0]?.filas[0];
-  if (primeraFila) {
-    const [, mes, anio] = primeraFila.fecha.split("/").map(Number);
-    const mesNombre = MESES[mes - 1];
-    const consecutivo = p.reenvio?.consecutivo ?? `${anio}-${String(mes).padStart(2, "0")}`;
-    const fechaEmision = p.reenvio?.fecha ?? p.fechaEmision;
-    x = transformarParrafo(x, (s) => /N°\s*\d{4}-\d{2}A?/.test(s), (s) => s.replace(/N°\s*\d{4}-\d{2}A?/, `N° ${consecutivo}`));
-    if (fechaEmision) x = transformarParrafo(x, (s) => s.startsWith("Medellín,"), () => `Medellín, ${fechaEmision}`);
-    x = transformarParrafo(x, (s) => /entre el \d+ y el \d+ de [A-Za-zÁÉÍÓÚáéíóú]+ del año \d{4}\./.test(s), (s) =>
-      s.replace(/entre el \d+ y el \d+ de [A-Za-zÁÉÍÓÚáéíóú]+ del año \d{4}\./, `entre el 1 y el ${new Date(anio, mes, 0).getDate()} de ${mesNombre} del año ${anio}.`),
-    );
-  }
+  if (p.reenvio) x = transformarParrafo(x, (s) => /N°\s*\d{4}-\d{2}A?/.test(s), (s) => s.replace(/N°\s*\d{4}-\d{2}A?/, `N° ${p.reenvio!.consecutivo}`));
 
   if (p.firma) {
     const ext = p.firma.tipo;
