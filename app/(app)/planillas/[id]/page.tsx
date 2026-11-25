@@ -213,56 +213,54 @@ export default function PlanillaPage() {
         <div className="min-w-0 space-y-8">
           {/* Archivos */}
           <section>
-            <h2 className="mb-4 font-bold tracking-tight text-xl">Archivos</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {FILES.map((f) => (
-                <div
-                  key={f.key}
-                  className={cx(
-                    "group flex gap-3 rounded-box border border-border bg-surface p-3 transition-colors duration-100 hover:border-fg/25",
-                    f.key === "registro" && "border-brand/30 p-5 sm:col-span-2 sm:items-center",
-                  )}
-                >
-                  <button
-                    onClick={() => setPreview(f.key)}
-                    className={cx(
-                      "relative grid h-[68px] w-[54px] shrink-0 place-items-center rounded-ctl border border-border bg-white",
-                      f.key === "registro" && "h-24 w-20",
-                    )}
-                    aria-label={`Previsualizar ${f.label}`}
-                  >
-                    <span className="absolute right-0 top-0 h-3 w-3 rounded-bl border-b border-l border-border bg-subtle" />
-                    <span className="space-y-1">
-                      <span className="block h-[3px] w-7 rounded bg-brand" />
-                      <span className="block h-[3px] w-7 rounded bg-stone-300" />
-                      <span className="block h-[3px] w-5 rounded bg-stone-300" />
-                      <span className="block h-[3px] w-6 rounded bg-stone-300" />
-                    </span>
-                  </button>
-                  <div className="flex min-w-0 flex-1 flex-col">
-                      <p className={cx("text-sm font-medium", f.key === "registro" && "font-bold tracking-tight text-xl")}>{f.key === "registro" ? "REGISTRO" : f.label}</p>
-                    <p className={cx("text-xs text-muted", f.key === "registro" && "text-[13px]")}>{f.key === "registro" ? "Documento base: personal, horas y pagos." : f.desc}</p>
-                    {f.key === "registro" && <p className="mt-1 text-xs text-muted">Las demás planillas se preparan con los datos de este registro.</p>}
-                    {f.key === "registro" && (
-                      <p className={cx("mt-0.5 text-[11px]", completo ? "text-ok" : "text-faint")}>
-                        {completo ? "Completo con cédulas: descárgalo ahora" : "Sin cédulas ni teléfonos"}
-                      </p>
-                    )}
-                    <div className="mt-auto flex gap-1 pt-2">
-                      <button
-                        onClick={() => download(f.key)}
-                        disabled={busy === f.key}
-                        className={cx(
-                          "inline-flex h-8 items-center gap-1.5 rounded-ctl px-2 text-xs font-medium text-fg hover:bg-subtle disabled:opacity-60",
-                          f.key === "registro" && "h-10 bg-brand px-3.5 text-[13px] text-brand-fg hover:bg-brand-hover",
-                        )}
-                      >
-                        {busy === f.key ? <Spinner className="h-3 w-3" /> : <IconDownload width={13} height={13} />} Descargar
-                      </button>
-                      <button onClick={() => setPreview(f.key)} className="inline-flex h-7 items-center gap-1.5 rounded px-2 text-xs text-muted hover:bg-subtle hover:text-fg">
-                        <IconEye width={13} height={13} /> Ver
-                      </button>
+            <h2 className="mb-4 text-xl font-bold tracking-tight">Archivos</h2>
+
+            {/* Registro: el documento base, destacado */}
+            <div className="flex flex-col gap-5 rounded-box border border-brand/35 bg-surface p-5 sm:flex-row sm:items-center">
+              <Miniatura grande onClick={() => setPreview("registro")} label="Previsualizar Registro" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <p className="text-lg font-bold tracking-tight">Registro</p>
+                  {completo ? <Badge tone="ok">Completo con cédulas · descárgalo ahora</Badge> : <Badge>Sin cédulas ni teléfonos</Badge>}
+                </div>
+                <p className="mt-1 text-[13px] text-muted">Documento base con el personal, las horas y los pagos. Las otras tres planillas salen de aquí.</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button variant="primary" loading={busy === "registro"} icon={<IconDownload width={15} height={15} />} onClick={() => download("registro")}>
+                    Descargar registro
+                  </Button>
+                  <Button icon={<IconEye width={15} height={15} />} onClick={() => setPreview("registro")}>
+                    Ver
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Las otras tres, iguales */}
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {FILES.filter((f) => f.key !== "registro").map((f) => (
+                <div key={f.key} className="flex flex-col overflow-hidden rounded-box border border-border bg-surface transition-colors duration-100 hover:border-fg/25">
+                  <div className="flex flex-1 items-start gap-3 p-4">
+                    <Miniatura onClick={() => setPreview(f.key)} label={`Previsualizar ${f.label}`} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold">{f.label}</p>
+                      <p className="mt-0.5 text-xs text-muted">{f.desc}</p>
                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 border-t border-border text-[13px]">
+                    <button
+                      onClick={() => download(f.key)}
+                      disabled={busy === f.key}
+                      aria-busy={busy === f.key || undefined}
+                      className="flex h-10 items-center justify-center gap-1.5 font-medium text-fg transition-colors duration-100 hover:bg-subtle disabled:cursor-wait"
+                    >
+                      {busy === f.key ? <Spinner className="h-3.5 w-3.5" /> : <IconDownload width={14} height={14} />} Descargar
+                    </button>
+                    <button
+                      onClick={() => setPreview(f.key)}
+                      className="flex h-10 items-center justify-center gap-1.5 border-l border-border text-muted transition-colors duration-100 hover:bg-subtle hover:text-fg"
+                    >
+                      <IconEye width={14} height={14} /> Ver
+                    </button>
                   </div>
                 </div>
               ))}
@@ -427,5 +425,27 @@ function WhatsappText({ text }: { text: string }) {
         part.startsWith("*") && part.endsWith("*") && part.length > 2 ? <strong key={i}>{part.slice(1, -1)}</strong> : <span key={i}>{part}</span>,
       )}
     </div>
+  );
+}
+
+/** Miniatura de documento: hoja blanca con renglones; abre la vista previa. */
+function Miniatura({ grande, onClick, label }: { grande?: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      className={cx(
+        "relative grid shrink-0 place-items-center rounded-ctl border border-border bg-white shadow-sm transition-transform duration-100 hover:-translate-y-0.5",
+        grande ? "h-24 w-[76px]" : "h-[60px] w-12",
+      )}
+    >
+      <span className="absolute right-0 top-0 h-3 w-3 rounded-bl border-b border-l border-stone-200 bg-stone-100" />
+      <span className={cx("space-y-1", grande && "space-y-1.5")}>
+        <span className={cx("block h-[3px] rounded bg-brand", grande ? "w-9" : "w-6")} />
+        <span className={cx("block h-[3px] rounded bg-stone-300", grande ? "w-9" : "w-6")} />
+        <span className={cx("block h-[3px] rounded bg-stone-300", grande ? "w-6" : "w-4")} />
+        <span className={cx("block h-[3px] rounded bg-stone-300", grande ? "w-8" : "w-5")} />
+      </span>
+    </button>
   );
 }

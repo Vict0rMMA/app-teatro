@@ -6,7 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { watchProfile, type Profile } from "@/lib/data";
 import { firebaseAuth } from "@/lib/firebase/client";
 import { VerifyEmail } from "./verify-email";
-import { Spinner } from "./ui";
+import Image from "next/image";
 
 interface AuthState {
   /** undefined mientras carga */
@@ -95,8 +95,20 @@ export function useSession() {
 
 function FullScreenLoader() {
   return (
-    <div className="grid min-h-dvh place-items-center text-muted">
-      <Spinner className="h-5 w-5" />
+    <div role="status" aria-label="Cargando" className="grid min-h-dvh place-items-center bg-bg">
+      <div className="flex flex-col items-center gap-5">
+        <Image
+          src="/logo-teatro.png"
+          alt="Teatro Universidad de Medellín"
+          width={180}
+          height={50}
+          priority
+          className="h-10 w-auto dark:rounded-ctl dark:bg-white dark:px-2 dark:py-1.5"
+        />
+        <span className="block h-[3px] w-32 overflow-hidden rounded-full bg-border">
+          <span className="block h-full w-1/3 animate-barra rounded-full bg-brand" />
+        </span>
+      </div>
     </div>
   );
 }

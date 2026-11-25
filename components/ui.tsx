@@ -41,10 +41,11 @@ export const Button = forwardRef<
     <button
       ref={ref}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={cx(
-        "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-ctl font-medium",
+        "relative inline-flex select-none items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-ctl font-medium",
         "transition-[background-color,border-color,color,transform] duration-100 active:translate-y-px",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        loading ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-50",
         sizes[size],
         variants[variant],
         className,
@@ -53,15 +54,20 @@ export const Button = forwardRef<
     >
       {loading ? <Spinner /> : icon}
       {children}
+      {loading && (
+        <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] overflow-hidden">
+          <span className="block h-full w-1/3 animate-barra bg-current opacity-50" />
+        </span>
+      )}
     </button>
   );
 });
 
 export function Spinner({ className }: { className?: string }) {
   return (
-    <svg className={cx("h-4 w-4 animate-spin", className)} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2" />
-      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <svg className={cx("h-4 w-4 animate-[spin_0.8s_linear_infinite]", className)} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2.5" />
+      <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
   );
 }
