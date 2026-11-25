@@ -419,17 +419,10 @@ export default function PlanillaPage() {
             )}
 
             <div className="mt-3 grid gap-2">
-              {grupo ? (
+              {grupo && (
                 <Button variant="primary" icon={<IconWhatsapp width={15} height={15} />} onClick={copiarYAbrirGrupo}>
                   Copiar y abrir el grupo
                 </Button>
-              ) : (
-                <p className="text-xs text-muted">
-                  <Link href="/ajustes" className="font-medium text-fg underline underline-offset-2">
-                    Pon el enlace del grupo en Ajustes
-                  </Link>{" "}
-                  para abrirlo directo desde aquí.
-                </p>
               )}
               <div className="grid grid-cols-2 gap-2">
                 <Button icon={copied ? <IconCheck width={15} height={15} /> : <IconCopy width={15} height={15} />} onClick={copy}>
@@ -441,7 +434,7 @@ export default function PlanillaPage() {
                   rel="noreferrer"
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-ctl border border-border text-sm font-medium transition-colors duration-100 hover:border-fg/30 hover:bg-surface sm:h-9"
                 >
-                  <IconWhatsapp width={15} height={15} /> Otro chat
+                  <IconWhatsapp width={15} height={15} /> {grupo ? "Otro chat" : "Abrir WhatsApp"}
                 </a>
               </div>
               {grupo && <p className="text-[11px] leading-relaxed text-muted">El grupo se abre sin el texto (WhatsApp no deja prellenarlo): solo pega con Ctrl+V o mantén presionado → Pegar.</p>}

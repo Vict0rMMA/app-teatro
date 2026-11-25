@@ -96,14 +96,11 @@ function DefaultsCard() {
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!Number.isFinite(d.valorHora) || d.valorHora < 0) return toast.error("El valor por hora no es válido.");
-    const grupo = d.grupoWhatsapp.trim();
-    if (grupo && !/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+\/?$/.test(grupo))
-      return toast.error("El enlace del grupo no es válido.", "Debe ser como https://chat.whatsapp.com/…");
     setSaving(true);
     try {
       // Las ubicaciones se editan en su propia tarjeta: se conservan las actuales.
       await updateProfile(user.uid, {
-        defaults: { ...d, grupoWhatsapp: d.grupoWhatsapp.trim(), ubicaciones: withDefaults(profile.defaults).ubicaciones, coordinadores: withDefaults(profile.defaults).coordinadores },
+        defaults: { ...d, ubicaciones: withDefaults(profile.defaults).ubicaciones, coordinadores: withDefaults(profile.defaults).coordinadores },
       });
       toast.success("Valores por defecto guardados");
     } catch {
@@ -148,9 +145,6 @@ function DefaultsCard() {
           <Field label="Observaciones (WhatsApp)">{(id) => <Textarea id={id} rows={2} value={d.observaciones} onChange={(e) => set("observaciones", e.target.value)} />}</Field>
           <Field label="Objetos perdidos (WhatsApp)">{(id) => <Textarea id={id} rows={2} value={d.objetosPerdidos} onChange={(e) => set("objetosPerdidos", e.target.value)} />}</Field>
         </div>
-        <Field label="Grupo de WhatsApp" hint="Enlace de invitación del grupo donde mandan el mensaje. En cada planilla sale el botón Copiar y abrir el grupo.">
-          {(id) => <Input id={id} type="url" inputMode="url" value={d.grupoWhatsapp} placeholder="https://chat.whatsapp.com/…" onChange={(e) => set("grupoWhatsapp", e.target.value)} />}
-        </Field>
         <div className="flex justify-end">
           <Button type="submit" variant="primary" loading={saving}>
             Guardar

@@ -70,8 +70,9 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
   const [res, setRes] = useState<Respuesta | null>(null);
   const [formato, setFormato] = useState<File | null>(null);
   const [infoFormato, setInfoFormato] = useState<DatosFormato | null>(null);
-  // Pegar celdas (sin IA) es lo recomendado; la foto la lee Gemini.
+  // Pegar celdas es lo recomendado (lo lee la app, al instante); la foto la lee Gemini.
   const [modo, setModo] = useState<"celdas" | "foto">("celdas");
+  const filasPegadas = texto.trim() ? texto.trim().split(/\r?\n/).filter((l) => l.trim()).length : 0;
   const [errorFormato, setErrorFormato] = useState("");
   const [datos, setDatos] = useState({ celular: "", direccion: "", ciudad: "Medellín - Antioquia" });
   const [usarFirmaPerfil, setUsarFirmaPerfil] = useState(!!profile.firma);
@@ -383,35 +384,60 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
 
         <Card className="mt-5 overflow-hidden">
           {modo === "celdas" ? (
-            <div className="grid md:grid-cols-[minmax(0,1fr)_240px]">
-              <Textarea
-                className="min-h-[230px] rounded-none border-0 bg-transparent font-mono text-xs leading-relaxed focus:ring-0"
-                placeholder={"Pega aquí las filas del Excel (Ctrl+V)…\n\nNOMBRE  CÉDULA  FACULTAD  FECHA  EVENTO  …"}
-                value={texto}
-                onChange={(e) => setTexto(e.target.value)}
-                aria-label="Celdas del consolidado"
-              />
+            <div className="grid md:grid-cols-[minmax(0,1fr)_260px]">
+              <div className="flex min-w-0 flex-col">
+                {/* Barra del cuadro: título, filas pegadas y limpiar */}
+                <div className="flex h-11 items-center justify-between gap-3 border-b border-border px-4 text-[13px]">
+                  <span className="font-bold">Celdas del Excel</span>
+                  {texto.trim() ? (
+                    <span className="flex items-center gap-3">
+                      <span className="flex items-center gap-1.5 font-medium text-ok">
+                        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
+                        {filasPegadas} {filasPegadas === 1 ? "fila" : "filas"}
+                      </span>
+                      <button type="button" onClick={() => setTexto("")} className="text-muted underline-offset-2 hover:text-fg hover:underline">
+                        Limpiar
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="text-muted">vacío</span>
+                  )}
+                </div>
+                <Textarea
+                  className="min-h-[240px] flex-1 rounded-none border-0 bg-transparent px-4 py-3 font-mono text-xs leading-relaxed focus:ring-0"
+                  placeholder="Haz clic aquí y pega con Ctrl+V…"
+                  value={texto}
+                  onChange={(e) => setTexto(e.target.value)}
+                  aria-label="Celdas del consolidado"
+                />
+              </div>
               <div className="border-t border-border bg-subtle/40 p-5 text-[13px] md:border-l md:border-t-0">
-                <p className="flex items-center gap-2 font-bold">
-                  Recomendado <Badge tone="ok">sin IA · al instante</Badge>
+                <p className="font-bold">Cómo pegarlo</p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-[12px] font-medium text-ok">
+                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
+                  Recomendado · al instante
                 </p>
-                <ol className="mt-3 space-y-2 text-muted">
-                  <li>
-                    <span className="font-medium text-fg">1.</span> En el Excel, selecciona tus filas (con el encabezado si puedes).
-                  </li>
-                  <li>
-                    <span className="font-medium text-fg">2.</span> Copia con <kbd className="rounded border border-border px-1 font-mono text-[11px]">Ctrl+C</kbd>.
-                  </li>
-                  <li>
-                    <span className="font-medium text-fg">3.</span> Pega aquí con <kbd className="rounded border border-border px-1 font-mono text-[11px]">Ctrl+V</kbd>.
-                  </li>
+                <ol className="mt-4 space-y-3">
+                  {[
+                    <>En el Excel, selecciona tus filas, con el encabezado si puedes.</>,
+                    <>
+                      Copia con <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[11px]">Ctrl+C</kbd>
+                    </>,
+                    <>
+                      Pégalas aquí con <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[11px]">Ctrl+V</kbd>
+                    </>,
+                  ].map((paso, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand text-[11px] font-bold text-brand-fg">
+                        {i + 1}
+                      </span>
+                      <span className="text-muted">{paso}</span>
+                    </li>
+                  ))}
                 </ol>
-                <p className="mt-3 text-[12px] text-muted">Si incluyes la fila de TOTAL, la app comprueba que la suma cuadre.</p>
-                {texto.trim() && (
-                  <p className="mt-3 text-[12px] font-medium text-ok">
-                    ● {texto.trim().split(/\r?\n/).filter((l) => l.trim()).length} filas pegadas
-                  </p>
-                )}
+                <p className="mt-4 border-t border-border pt-3 text-[12px] text-muted">
+                  Tip: si incluyes la fila de <span className="font-medium text-fg">TOTAL</span>, la app comprueba que la suma cuadre.
+                </p>
               </div>
             </div>
           ) : (
