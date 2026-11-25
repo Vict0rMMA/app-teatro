@@ -4,7 +4,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { watchPermisos } from "@/lib/data";
-import { esAdminEmail, rutaInicial, seccionDeRuta, TODAS, type Seccion } from "@/lib/permisos";
+import { esAdminEmail, rutaInicial, sanearSecciones, seccionDeRuta, TODAS, type Seccion } from "@/lib/permisos";
 import { useSession } from "./auth-provider";
 
 type Permisos = { secciones: Seccion[]; esAdmin: boolean; puede: (s: Seccion) => boolean };
@@ -26,12 +26,23 @@ export function GuardaPermisos({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const esAdmin = esAdminEmail(user.email, process.env.NEXT_PUBLIC_ADMIN_EMAIL);
-  const [secciones, setSecciones] = useState<Seccion[] | null | undefined>(undefined);
+  // Arranca con lo último que se supo de esta cuenta (en este equipo) para no esperar al servidor
+  // en cada apertura; la suscripción lo corrige al instante si cambió. Servidor y reglas siguen exigiendo.
+  const clave = `permisos:${user.uid}`;
+  const [secciones, setSecciones] = useState<Seccion[] | null | undefined>(() => leerGuardado(clave));
 
   useEffect(() => {
     if (esAdmin) return;
-    return watchPermisos(user.uid, setSecciones, () => setSecciones(null));
-  }, [user.uid, esAdmin]);
+    const poner = (s: Seccion[] | null) => {
+      setSecciones(s);
+      try {
+        localStorage.setItem(clave, JSON.stringify(s));
+      } catch {
+        /* sin almacenamiento: solo se pierde el atajo */
+      }
+    };
+    return watchPermisos(user.uid, poner, () => setSecciones(null));
+  }, [user.uid, esAdmin, clave]);
 
   // Sin permisos guardados = acceso completo (por defecto). El administrador quita secciones después.
   const efectivas = esAdmin || secciones === null ? TODAS : secciones;
@@ -50,6 +61,18 @@ export function GuardaPermisos({ children }: { children: ReactNode }) {
   if (!permitido) return <Cargando />;
 
   return <Ctx.Provider value={{ secciones: efectivas, esAdmin, puede: (s) => efectivas.includes(s) }}>{children}</Ctx.Provider>;
+}
+
+function leerGuardado(clave: string): Seccion[] | null | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const v = localStorage.getItem(clave);
+    if (v === null) return undefined;
+    const d = JSON.parse(v) as unknown;
+    return d === null ? null : Array.isArray(d) ? sanearSecciones(d) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function Cargando() {

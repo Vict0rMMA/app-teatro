@@ -382,9 +382,10 @@ export default function HorasPage() {
           )}
         </section>
 
-        <aside className="min-w-0 space-y-6">
+        {/* En pantalla angosta el calendario va arriba de los turnos; en ancha, a la derecha. */}
+        <aside className="contents lg:block lg:min-w-0 lg:space-y-6">
           {/* Calendario */}
-          <section className="mx-auto w-full max-w-[340px] rounded-box border border-border bg-surface p-4 lg:max-w-none">
+          <section className="order-first mx-auto w-full max-w-[340px] rounded-box border border-border bg-surface p-4 lg:order-none lg:max-w-none">
             <div className="mb-4 flex items-baseline justify-between">
               <p className="text-sm font-bold">{MESES[ym.m]}</p>
               <p className="tabular text-xs text-muted">
