@@ -10,6 +10,8 @@ const nextConfig = {
     const proyecto = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
     if (!proyecto) return [];
     return [
+      // Sin Firebase Hosting no existe init.json en firebaseapp.com: lo entrega la app.
+      { source: "/__/firebase/init.json", destination: "/api/firebase-init" },
       { source: "/__/auth/:path*", destination: `https://${proyecto}.firebaseapp.com/__/auth/:path*` },
       { source: "/__/firebase/:path*", destination: `https://${proyecto}.firebaseapp.com/__/firebase/:path*` },
     ];
