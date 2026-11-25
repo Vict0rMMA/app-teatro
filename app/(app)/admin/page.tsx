@@ -244,11 +244,16 @@ export default function AdminPage() {
             {ordenadas.map((account) => {
               const enLinea = ahora - ts(account.ultimaActividad) < ACTIVO_MS;
               return (
-                <li key={account.uid} className={`grid gap-2 px-2 py-3 sm:grid-cols-[minmax(0,1fr)_170px_150px_110px] sm:items-center sm:gap-4 ${account.deshabilitado ? "opacity-60" : ""}`}>
+                <li key={account.uid} className={`grid gap-3 px-2 py-4 sm:grid-cols-[minmax(0,1fr)_170px_150px_110px] sm:items-start sm:gap-4 ${account.deshabilitado ? "opacity-60" : ""}`}>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{account.nombre}</p>
-                    <p className="truncate text-xs text-muted">{account.email || "Sin correo"}</p>
-                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                    <div className="flex items-center gap-3">
+                      <Iniciales nombre={account.nombre} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold">{account.nombre}</p>
+                        <p className="truncate text-xs text-muted">{account.email || "Sin correo"}</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 pl-12">
                       <Badge>{(account.acceso ?? []).join(" + ") || "Sin método"}</Badge>
                       <Badge tone={account.perfilCompleto ? "ok" : "warn"}>{account.perfilCompleto ? "Perfil listo" : "Sin perfil"}</Badge>
                       <Badge tone={account.tieneFirma ? "ok" : "neutral"}>{account.tieneFirma ? "Con firma" : "Sin firma"}</Badge>
@@ -278,7 +283,7 @@ export default function AdminPage() {
                     {account.uid === user.uid ? (
                       <span className="text-xs text-muted">Tu cuenta</span>
                     ) : (
-                      <Button size="sm" variant={account.deshabilitado ? "secondary" : "ghost"} onClick={() => setCambiar(account)}>
+                      <Button size="sm" variant={account.deshabilitado ? "secondary" : "ghost"} className={account.deshabilitado ? undefined : "text-muted hover:text-danger"} onClick={() => setCambiar(account)}>
                         {account.deshabilitado ? "Reactivar" : "Desactivar"}
                       </Button>
                     )}
@@ -338,7 +343,20 @@ export default function AdminPage() {
   );
 }
 
-/** Casillas de secciones de una cuenta. La propia (administradora) siempre tiene todo. */
+/** Círculo con iniciales; el color sale del nombre (siempre el mismo para la misma persona). */
+function Iniciales({ nombre }: { nombre: string }) {
+  const partes = nombre.trim().split(/\s+/);
+  const ini = ((partes[0]?.[0] ?? "") + (partes.length >= 3 ? partes[2]?.[0] ?? "" : partes[1]?.[0] ?? "")).toUpperCase() || "?";
+  const colores = ["bg-[#c8201a]", "bg-[#2f6f9f]", "bg-[#5b7f3a]", "bg-[#8a5a9e]", "bg-[#b0712b]", "bg-[#3f7d78]"];
+  const n = [...nombre].reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return (
+    <span aria-hidden className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-[13px] font-bold text-white ${colores[n % colores.length]}`}>
+      {ini}
+    </span>
+  );
+}
+
+/** Interruptores de secciones de una cuenta. La propia (administradora) siempre tiene todo. */
 function Permisos({
   account,
   propia,
@@ -351,16 +369,29 @@ function Permisos({
   onCambiar: (secciones: Seccion[]) => void;
 }) {
   if (account.esAdmin || propia) {
-    return <p className="mt-2 text-xs text-muted">Acceso completo (administradora)</p>;
+    return (
+      <p className="mt-3 flex items-center gap-1.5 pl-12 text-[12px] font-medium text-ok">
+        <span aria-hidden>✓</span> Acceso completo · administradora
+      </p>
+    );
   }
   // Sin permisos guardados = todo (por defecto).
   const actuales = account.secciones ?? TODAS;
-  const pendiente = actuales.length === 0;
+  const ninguna = actuales.length === 0;
   const alternar = (s: Seccion) => onCambiar(TODAS.filter((x) => (x === s ? !actuales.includes(s) : actuales.includes(x))));
   return (
-    <div className="mt-2.5">
-      <div className="flex flex-wrap items-center gap-1.5">
-        {pendiente && <span className="mr-1 text-[12px] font-medium text-warn">● Sin secciones</span>}
+    <div className="ml-12 mt-3 rounded-box border border-border bg-subtle/30 px-3.5 py-3">
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted">
+          Secciones {ninguna && <span className="ml-1 normal-case tracking-normal text-warn">· no puede usar nada</span>}
+        </p>
+        {actuales.length < TODAS.length && (
+          <button type="button" disabled={guardando} onClick={() => onCambiar(TODAS)} className="text-[12px] font-medium text-brand underline-offset-2 hover:underline disabled:opacity-60">
+            Dar todo
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-1 gap-x-5 gap-y-2 sm:grid-cols-2 xl:grid-cols-4">
         {SECCIONES.map((s) => {
           const on = actuales.includes(s.id);
           return (
@@ -369,24 +400,20 @@ function Permisos({
               type="button"
               role="switch"
               aria-checked={on}
+              aria-label={`${s.label}: ${on ? "habilitada" : "deshabilitada"}`}
               disabled={guardando}
               onClick={() => alternar(s.id)}
-              className={`inline-flex h-8 items-center gap-1.5 rounded-ctl border px-2.5 text-[12px] font-medium transition-colors duration-100 disabled:opacity-60 ${
-                on ? "border-brand/50 bg-brand-soft/60 text-fg" : "border-border text-muted hover:border-fg/30 hover:text-fg"
-              }`}
+              className="group flex items-center gap-2.5 text-left text-[13px] disabled:opacity-60"
             >
-              <span aria-hidden className={`grid h-3.5 w-3.5 place-items-center rounded-[3px] border text-[10px] leading-none ${on ? "border-brand bg-brand text-brand-fg" : "border-border"}`}>
-                {on ? "✓" : ""}
+              <span aria-hidden className={`relative h-[18px] w-8 shrink-0 rounded-full transition-colors duration-150 ${on ? "bg-brand" : "bg-border"}`}>
+                <span
+                  className={`absolute left-[2px] top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-150 ${on ? "translate-x-[14px]" : ""}`}
+                />
               </span>
-              {s.label}
+              <span className={on ? "text-fg" : "text-muted group-hover:text-fg"}>{s.label}</span>
             </button>
           );
         })}
-        {actuales.length < TODAS.length && (
-          <button type="button" disabled={guardando} onClick={() => onCambiar(TODAS)} className="ml-1 text-[12px] text-brand underline-offset-2 hover:underline disabled:opacity-60">
-            Dar todo
-          </button>
-        )}
       </div>
     </div>
   );
