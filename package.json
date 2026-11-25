@@ -14,7 +14,7 @@
     "node": "22.x"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.14.0",
+    "@google/genai": "^3.6.1",
     "docx-preview": "^0.4.1",
     "docxtemplater": "^3.71.1",
     "docxtemplater-image-module-free": "^1.1.1",

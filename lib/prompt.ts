@@ -1,4 +1,4 @@
-// Copia de paquete-cuenta-cobro/prompt/system_prompt.md, solo la parte de extracción.
+// Instrucciones para Gemini. Copia de docs/cuenta-cobro/system_prompt.md, solo la parte de extracción.
 // Los registros personales NO se envían a la IA: la comparación la hace lib/registros.ts.
 export const SYSTEM_PROMPT = `Eres el asistente de cuentas de cobro del equipo de logística de la Universidad de Medellín.
 Tu trabajo es EXTRAER, sin inventar ni corregir, las filas del consolidado que te envíe el usuario

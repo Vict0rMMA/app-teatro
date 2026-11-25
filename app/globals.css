@@ -132,48 +132,66 @@
   opacity: 0;
   animation: foco-entra 2.4s ease-out 2.2s forwards;
 }
-/* Hojas del telón: pliegues verticales en rojo oscuro. */
+/* Hojas del telón: terciopelo con pliegues anchos, sombra arriba/abajo y en el borde que abre. */
 .telon-hoja {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 50.5%;
-  background-color: #5c0f0b;
-  background-image: repeating-linear-gradient(
-    90deg,
-    rgb(0 0 0 / 0.38) 0px,
-    rgb(0 0 0 / 0.08) 14px,
-    rgb(255 255 255 / 0.07) 26px,
-    rgb(0 0 0 / 0.08) 38px,
-    rgb(0 0 0 / 0.38) 52px
-  );
-  animation: telon-abre 4.2s cubic-bezier(0.65, 0, 0.25, 1) 0.5s forwards;
+  background-color: #6a0c10;
+  background-image:
+    linear-gradient(180deg, rgb(0 0 0 / 0.45), transparent 22%, transparent 70%, rgb(0 0 0 / 0.55)),
+    repeating-linear-gradient(
+      90deg,
+      rgb(0 0 0 / 0.42) 0px,
+      rgb(0 0 0 / 0.14) 22px,
+      rgb(255 255 255 / 0.09) 40px,
+      rgb(0 0 0 / 0.12) 58px,
+      rgb(0 0 0 / 0.42) 80px
+    );
+  will-change: transform;
 }
 .telon-hoja.izq {
   left: 0;
-  transform-origin: 0 50%;
+  box-shadow: inset -28px 0 36px -14px rgb(0 0 0 / 0.65), 12px 0 30px rgb(0 0 0 / 0.35);
+  animation: telon-izq 4.6s cubic-bezier(0.7, 0, 0.2, 1) 0.6s forwards;
 }
 .telon-hoja.der {
   right: 0;
-  transform-origin: 100% 50%;
+  box-shadow: inset 28px 0 36px -14px rgb(0 0 0 / 0.65), -12px 0 30px rgb(0 0 0 / 0.35);
+  animation: telon-der 4.6s cubic-bezier(0.7, 0, 0.2, 1) 0.6s forwards;
 }
-/* Bambalina: franja fija arriba. */
+/* Bambalina: franja de terciopelo con ribete dorado y ondas abajo. */
 .telon-bambalina {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 34px;
-  background-color: #4a0c09;
-  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.3) 0 2px, transparent 2px 40px);
-  box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.5);
+  height: 46px;
+  background-color: #5c0a0e;
+  background-image:
+    linear-gradient(180deg, rgb(0 0 0 / 0.35), transparent),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.3) 0px, rgb(255 255 255 / 0.06) 20px, rgb(0 0 0 / 0.3) 40px);
+  border-bottom: 2px solid rgb(201 162 74 / 0.75);
 }
-@keyframes telon-abre {
-  from {
-    transform: scaleX(1);
-  }
+.telon-bambalina::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 16px;
+  background: radial-gradient(circle at 24px 0, #5c0a0e 0 22px, transparent 23px) 0 0 / 48px 16px repeat-x;
+  filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.4));
+}
+@keyframes telon-izq {
   to {
-    transform: scaleX(0.09);
+    transform: translateX(calc(-100% + 56px));
+  }
+}
+@keyframes telon-der {
+  to {
+    transform: translateX(calc(100% - 56px));
   }
 }
 @keyframes foco-entra {

@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI, type Part } from "@google/genai";
 import { NextResponse } from "next/server";
 import { HttpError, handleError, rateLimit, requireUser } from "@/lib/api";
 import { validar, type Extraccion } from "@/lib/cuenta-cobro";
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 const TIPOS_IMAGEN = ["image/png", "image/jpeg", "image/webp"] as const;
 const MAX_IMAGEN_B64 = 7_000_000; // ~5 MB
 const MAX_TEXTO = 50_000;
@@ -36,7 +36,8 @@ function parseJson(raw: string): Extraccion {
 export async function POST(req: Request) {
   try {
     const user = await requireUser(req);
-    if (!process.env.ANTHROPIC_API_KEY) throw new HttpError(503, "Falta configurar ANTHROPIC_API_KEY en el servidor.", "SIN_IA");
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new HttpError(503, "Falta configurar GEMINI_API_KEY en el servidor.", "SIN_IA");
     await rateLimit(user.uid, "cuenta-cobro", 20, 60 * 60 * 1000);
 
     const body = (await req.json().catch(() => null)) as Body | null;
@@ -51,10 +52,9 @@ export async function POST(req: Request) {
       if (!imagen.base64 || imagen.base64.length > MAX_IMAGEN_B64) throw new HttpError(413, "Imagen vacía o mayor a 5 MB.");
     }
 
-    const content: Anthropic.Beta.BetaContentBlockParam[] = [];
-    if (imagen) content.push({ type: "image", source: { type: "base64", media_type: imagen.mediaType, data: imagen.base64 } });
-    content.push({
-      type: "text",
+    const parts: Part[] = [];
+    if (imagen) parts.push({ inlineData: { mimeType: imagen.mediaType, data: imagen.base64 } });
+    parts.push({
       text: [
         body.persona ? `Persona: ${body.persona.slice(0, 120)}` : "Persona: la única que aparece en el consolidado.",
         texto ? `Consolidado pegado:\n${texto}` : "Consolidado en la imagen adjunta.",
@@ -63,21 +63,23 @@ export async function POST(req: Request) {
 
     let raw: string;
     try {
-      const res = await new Anthropic().beta.messages.create({
+      const res = await new GoogleGenAI({ apiKey }).models.generateContent({
         model: MODEL,
-        max_tokens: 16000,
-        // Transcribir una tabla no necesita razonamiento largo; "low" mantiene la respuesta dentro de los 60 s de Vercel.
-        output_config: { effort: "low" },
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content }],
+        contents: [{ role: "user", parts }],
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          responseMimeType: "application/json",
+          temperature: 0,
+        },
       });
-      if (res.stop_reason === "refusal") throw new Error("El modelo no procesó la solicitud.");
-      if (res.stop_reason === "max_tokens") throw new Error("Respuesta cortada: el consolidado es demasiado largo.");
-      raw = res.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
+      raw = res.text ?? "";
+      if (!raw) throw new Error(`Respuesta vacía (${res.candidates?.[0]?.finishReason ?? "sin motivo"}).`);
     } catch (e) {
       console.error("[cuenta-cobro]", e);
+      const status = (e as { status?: number }).status;
+      if (status === 400 || status === 401 || status === 403)
+        throw new HttpError(502, "Gemini rechazó la clave o el modelo. Revisa GEMINI_API_KEY y GEMINI_MODEL en Vercel.", "IA_CLAVE");
+      if (status === 429) throw new HttpError(429, "Se acabó la cuota de Gemini por ahora. Intenta en un rato.", "IA_CUOTA");
       throw new HttpError(502, "No se pudo procesar el consolidado. Intenta con una imagen más nítida o pega el texto.", "IA");
     }
 

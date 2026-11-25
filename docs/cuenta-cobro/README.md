@@ -16,4 +16,6 @@ Dónde quedó cada parte del paquete original (`paquete-cuenta-cobro`):
 | `prompt/system_prompt.md` | aquí: `system_prompt.md` |
 | `README.md` | aquí: `paquete-original.md` |
 
+La lectura del consolidado usa **Gemini** (`GEMINI_API_KEY` en Vercel y `.env.local`), no Claude como decía el paquete.
+
 Nuevo (no venía en el paquete): `lib/registros.ts` compara el consolidado con Mis horas y marca los días con más de 8 h.
