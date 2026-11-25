@@ -7,7 +7,7 @@ import { DocxPreview } from "@/components/docx-preview";
 import { useToast } from "@/components/toast";
 import { Badge, Button, Card, Field, Input, Modal, Notice, Spinner, Textarea, cx } from "@/components/ui";
 import { borrarBorrador, guardarBorrador, leerBorrador } from "@/lib/borrador";
-import { esLaPersona } from "@/lib/consolidado-texto";
+import { esLaPersona, leerConsolidadoTexto } from "@/lib/consolidado-texto";
 import { leerFormato, validar, type DatosFormato, type Extraccion, type Fila, type Validacion } from "@/lib/cuenta-cobro";
 import { apiFetch } from "@/lib/firebase/client";
 import { comparar, type Comparacion, type RegistroPersonal } from "@/lib/registros";
@@ -73,6 +73,10 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
   // Pegar celdas es lo recomendado (lo lee la app, al instante); la foto la lee Gemini.
   const [modo, setModo] = useState<"celdas" | "foto">("celdas");
   const filasPegadas = texto.trim() ? texto.trim().split(/\r?\n/).filter((l) => l.trim()).length : 0;
+  // Vista ordenada de lo pegado: la misma lectura que hace el servidor, antes de dar "Revisar".
+  const previa = useMemo(() => (texto.trim() ? leerConsolidadoTexto(texto, persona.trim() || undefined) : null), [texto, persona]);
+  const [verTexto, setVerTexto] = useState(false);
+  const mostrarTabla = !!previa?.filas.length && !verTexto;
   const [errorFormato, setErrorFormato] = useState("");
   const [datos, setDatos] = useState({ celular: "", direccion: "", ciudad: "Medellín - Antioquia" });
   const [usarFirmaPerfil, setUsarFirmaPerfil] = useState(!!profile.firma);
@@ -395,7 +399,14 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
                         <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
                         {filasPegadas} {filasPegadas === 1 ? "fila" : "filas"}
                       </span>
-                      <button type="button" onClick={() => setTexto("")} className="text-muted underline-offset-2 hover:text-fg hover:underline">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTexto("");
+                          setVerTexto(false);
+                        }}
+                        className="text-muted underline-offset-2 hover:text-fg hover:underline"
+                      >
                         Limpiar
                       </button>
                     </span>
@@ -403,13 +414,71 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
                     <span className="text-muted">vacío</span>
                   )}
                 </div>
-                <Textarea
-                  className="min-h-[240px] flex-1 rounded-none border-0 bg-transparent px-4 py-3 font-mono text-xs leading-relaxed focus:ring-0"
-                  placeholder="Haz clic aquí y pega con Ctrl+V…"
-                  value={texto}
-                  onChange={(e) => setTexto(e.target.value)}
-                  aria-label="Celdas del consolidado"
-                />
+                {mostrarTabla && previa ? (
+                  <div className="max-h-[300px] min-h-[240px] flex-1 overflow-auto">
+                    <table className="w-full min-w-[640px] text-[12px]">
+                      <thead className="sticky top-0 bg-surface">
+                        <tr className="border-b border-border text-left">
+                          {["Fecha", "Evento", "Dependencia", "Inicio", "Fin"].map((h) => (
+                            <th key={h} className="th px-3 font-medium">
+                              {h}
+                            </th>
+                          ))}
+                          <th className="th px-3 text-right font-medium">Horas</th>
+                          <th className="th px-3 text-right font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previa.filas.map((f, i) => (
+                          <tr key={i} className="border-b border-border/50">
+                            <td className="tabular whitespace-nowrap px-3 py-1.5">{f.fecha}</td>
+                            <td className="max-w-[220px] truncate px-3 py-1.5" title={f.evento}>
+                              {f.evento}
+                            </td>
+                            <td className="max-w-[160px] truncate px-3 py-1.5 text-muted" title={f.dependencia}>
+                              {f.dependencia}
+                            </td>
+                            <td className="tabular whitespace-nowrap px-3 py-1.5">{f.hora_inicio}</td>
+                            <td className="tabular whitespace-nowrap px-3 py-1.5">{f.hora_fin}</td>
+                            <td className="tabular px-3 py-1.5 text-right">{f.horas}</td>
+                            <td className="tabular whitespace-nowrap px-3 py-1.5 text-right">{pesos(f.total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <Textarea
+                    wrap="off"
+                    className="min-h-[240px] flex-1 overflow-x-auto whitespace-pre rounded-none border-0 bg-transparent px-4 py-3 font-mono text-xs leading-relaxed focus:ring-0"
+                    style={{ tabSize: 4 }}
+                    placeholder="Haz clic aquí y pega con Ctrl+V…"
+                    value={texto}
+                    onChange={(e) => setTexto(e.target.value)}
+                    aria-label="Celdas del consolidado"
+                  />
+                )}
+                {/* Resumen de lo detectado */}
+                {texto.trim() && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2.5 text-[12px]">
+                    {previa?.filas.length ? (
+                      <p className="font-medium text-ok">
+                        ✓ Detectado: {previa.persona.nombre} · {previa.filas.length} {previa.filas.length === 1 ? "evento" : "eventos"} ·{" "}
+                        {previa.filas.reduce((a, f) => a + f.horas, 0)} h · {pesos(previa.filas.reduce((a, f) => a + f.total, 0))}
+                        {previa.mes >= 1 && previa.mes <= 12 ? ` · ${MESES[previa.mes - 1]} ${previa.anio}` : ""}
+                      </p>
+                    ) : previa ? (
+                      <p className="font-medium text-warn">No hay filas de &quot;{persona}&quot; en lo pegado. Revisa el nombre en Persona.</p>
+                    ) : (
+                      <p className="text-muted">No reconozco la tabla; al revisar, la leerá Gemini.</p>
+                    )}
+                    {!!previa?.filas.length && (
+                      <button type="button" onClick={() => setVerTexto((v) => !v)} className="text-muted underline-offset-2 hover:text-fg hover:underline">
+                        {verTexto ? "Ver tabla" : "Ver texto pegado"}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="border-t border-border bg-subtle/40 p-5 text-[13px] md:border-l md:border-t-0">
                 <p className="font-bold">Cómo pegarlo</p>
