@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { useSession } from "./auth-provider";
-import { IconClock, IconHistory, IconMore, IconPlus, IconReceipt } from "./icons";
+import { IconClock, IconHistory, IconLogout, IconMore, IconPlus, IconReceipt } from "./icons";
 import { ThemeToggle } from "./theme";
 import { cx } from "./ui";
 
@@ -24,6 +24,21 @@ const TABS = [
   { href: "/horas", label: "Horas", icon: IconClock },
   { href: "/cuenta-cobro", label: "Cobro", icon: IconReceipt },
 ];
+
+/** "Víctor Manuel Monsalve Aguilar" → "Víctor Monsalve" (nombre y primer apellido). */
+function nombreCorto(nombre: string) {
+  const p = nombre.trim().split(/\s+/);
+  if (p.length >= 4) return `${p[0]} ${p[2]}`;
+  return p.slice(0, 2).join(" ");
+}
+
+function iniciales(nombre: string) {
+  return nombreCorto(nombre)
+    .split(" ")
+    .map((w) => w[0] ?? "")
+    .join("")
+    .toUpperCase();
+}
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
@@ -114,14 +129,27 @@ export function AppShell({ children }: { children: ReactNode }) {
             })}
           </ul>
         </nav>
-        <div className="border-t border-border px-5 py-4">
-          <p className="truncate text-[13px] font-medium">{profile.nombre}</p>
-          <p className="truncate text-[12px] text-muted">{user.email}</p>
-          <div className="mt-2 flex items-center justify-between">
-            <button onClick={signOut} className="text-[13px] text-muted underline-offset-2 hover:text-fg hover:underline">
-              Cerrar sesión
-            </button>
-            <ThemeToggle />
+        <div className="p-3">
+          <div className="rounded-box border border-border bg-surface p-3">
+            <div className="flex items-center gap-2.5" title={profile.nombre}>
+              <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-[13px] font-bold text-brand-fg">
+                {iniciales(profile.nombre)}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-bold leading-tight">{nombreCorto(profile.nombre)}</p>
+                <p className="truncate text-[11px] leading-tight text-muted">{user.email}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-1 border-t border-border pt-2">
+              <button
+                onClick={signOut}
+                className="flex h-8 flex-1 items-center gap-2 rounded-ctl px-2 text-[13px] text-muted transition-colors duration-100 hover:bg-subtle hover:text-fg"
+              >
+                <IconLogout width={15} height={15} />
+                Cerrar sesión
+              </button>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </aside>

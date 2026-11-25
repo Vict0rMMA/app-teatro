@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSession } from "@/components/auth-provider";
-import { withDefaults } from "@/lib/schemas";
+import { DEPENDENCIAS, withDefaults } from "@/lib/schemas";
 import { saveBlob, usePlaces } from "@/components/hooks";
 import { IconChevron, IconDownload, IconPencil, IconPlus, IconTrash } from "@/components/icons";
 import { useToast } from "@/components/toast";
@@ -24,6 +24,8 @@ interface FormState {
   /** coordinador para quien se trabajó: un nombre de la lista o escrito a mano */
   paraQuien: string;
   paraOtro: boolean;
+  /** el valor se escribió a mano: ya no se recalcula con las horas */
+  valorManual: boolean;
   origen: WorkLog["origen"];
 }
 
@@ -53,7 +55,8 @@ export default function HorasPage() {
   const { user, profile } = useSession();
   const { places, teatroId } = usePlaces(user.uid);
   const coordinadores = withDefaults(profile.defaults).coordinadores;
-  const todos = Object.values(coordinadores).flat();
+  const todos = [...DEPENDENCIAS, ...Object.values(coordinadores).flat()];
+  const valorHora = withDefaults(profile.defaults).valorHora;
   const toast = useToast();
   const [logs, setLogs] = useState<WorkLog[] | null>(null);
   const today = new Date();
@@ -123,6 +126,7 @@ export default function HorasPage() {
       origen: "manual",
       paraQuien: "",
       paraOtro: false,
+      valorManual: false,
     });
   }
 
@@ -140,6 +144,7 @@ export default function HorasPage() {
       origen: l.origen,
       paraQuien: l.paraQuien ?? "",
       paraOtro: !!l.paraQuien && !todos.includes(l.paraQuien),
+      valorManual: true,
     });
   }
 
@@ -195,6 +200,14 @@ export default function HorasPage() {
   }
 
   const setF = (patch: Partial<FormState>) => setForm((f) => (f ? { ...f, ...patch } : f));
+  // Horas: mientras el valor no se haya escrito a mano, se calcula horas × valor por hora.
+  const setHoras = (h: number | string) =>
+    setForm((f) => {
+      if (!f) return f;
+      const horas = String(h);
+      const valor = f.valorManual ? f.valor : horas ? formatearNumero(String(Number(horas) * valorHora)) : "";
+      return { ...f, horas, valor };
+    });
 
   // Calendario (semana empieza el lunes)
   const first = new Date(ym.y, ym.m, 1);
@@ -333,10 +346,16 @@ export default function HorasPage() {
 
         <aside className="min-w-0 space-y-6">
           {/* Calendario */}
-          <section className="mx-auto w-full max-w-[320px] rounded-box border border-border bg-surface p-4 lg:max-w-none">
-            <div className="grid grid-cols-7 gap-1 text-center">
+          <section className="mx-auto w-full max-w-[340px] rounded-box border border-border bg-surface p-4 lg:max-w-none">
+            <div className="mb-4 flex items-baseline justify-between">
+              <p className="text-sm font-bold">{MESES[ym.m]}</p>
+              <p className="tabular text-xs text-muted">
+                {formatDuracion(total.horas)} · {porDia.size} {porDia.size === 1 ? "día" : "días"}
+              </p>
+            </div>
+            <div className="grid grid-cols-7 gap-1.5 text-center">
               {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (
-                <span key={i} className="pb-1 text-[11px] font-medium text-muted">
+                <span key={i} className={cx("pb-1 text-[11px] font-medium", i >= 5 ? "text-faint" : "text-muted")}>
                   {d}
                 </span>
               ))}
@@ -344,7 +363,6 @@ export default function HorasPage() {
                 <span key={`e${i}`} />
               ))}
               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
-                const h = porDia.get(day);
                 // El color sale del total del día en todos los lugares, aunque haya filtros.
                 const hDia = horasDia.get(`${mes}-${pad(day)}`) ?? 0;
                 const isToday = isThisMonth && day === today.getDate();
@@ -355,47 +373,60 @@ export default function HorasPage() {
                     title={hDia ? (mensajeDia(hDia) ?? formatDuracion(hDia)) : "Agregar turno"}
                     aria-label={`${day} de ${MESES[ym.m].toLowerCase()}${hDia ? `, ${formatDuracion(hDia)}` : ""}${estadoDia(hDia) === "excedido" ? ", más de 8 h" : ""}`}
                     className={cx(
-                      "tabular grid aspect-square place-items-center rounded-ctl text-xs transition-colors duration-100",
-                      h || hDia ? COLOR_DIA[estadoDia(hDia)] : "text-muted hover:bg-subtle hover:text-fg",
-                      isToday && !hDia && "text-fg ring-1 ring-inset ring-brand",
+                      "tabular flex aspect-square flex-col items-center justify-center rounded-ctl leading-none transition-[background-color,transform] duration-100 active:scale-95",
+                      hDia ? COLOR_DIA[estadoDia(hDia)] : "text-muted hover:bg-subtle hover:text-fg",
+                      isToday && !hDia && "font-bold text-brand ring-1 ring-inset ring-brand/60",
+                      isToday && hDia > 0 && "ring-2 ring-brand ring-offset-2 ring-offset-surface",
                     )}
                   >
-                    {day}
+                    <span className="text-[13px]">{day}</span>
+                    {hDia > 0 && <span className="mt-0.5 text-[9px] font-medium opacity-80">{Number.isInteger(hDia) ? hDia : hDia.toFixed(1)} h</span>}
                   </button>
                 );
               })}
             </div>
-            <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted">
-              <li className="flex items-center gap-1.5">
-                <span className={cx("h-2.5 w-2.5 rounded-sm", COLOR_DIA.normal)} />
-                Con horas
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className={cx("h-2.5 w-2.5 rounded-sm", COLOR_DIA.limite)} />8 h
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className={cx("h-2.5 w-2.5 rounded-sm", COLOR_DIA.excedido)} />
-                Más de 8 h
-              </li>
-            </ul>
-            <p className="mt-2 text-[11px] text-muted">Toca un día para agregar un turno.</p>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+              <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted">
+                <li className="flex items-center gap-1.5">
+                  <span className={cx("h-2 w-2 rounded-full", COLOR_DIA.normal)} />
+                  Trabajado
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className={cx("h-2 w-2 rounded-full", COLOR_DIA.limite)} />8 h
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className={cx("h-2 w-2 rounded-full", COLOR_DIA.excedido)} />
+                  Más de 8 h
+                </li>
+              </ul>
+              <span className="text-[11px] text-faint">Toca un día para agregar</span>
+            </div>
           </section>
 
           {/* Por lugar */}
-          <section>
-            <h2 className="eyebrow mb-3 text-fg">Por lugar</h2>
+          <section className="rounded-box border border-border bg-surface p-4">
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className="text-sm font-bold">Por lugar</h2>
+              {porLugar.length > 0 && <span className="tabular text-xs text-muted">{formatDuracion(total.horas)}</span>}
+            </div>
             {porLugar.length === 0 ? (
-              <p className="text-[13px] text-faint">Aún no hay horas este mes.</p>
+              <p className="text-[13px] text-muted">Aún no hay horas este mes.</p>
             ) : (
-              <ul className="space-y-3">
-                {porLugar.map(([id, h]) => (
+              <ul className="space-y-4">
+                {porLugar.map(([id, h], i) => (
                   <li key={id}>
-                    <div className="mb-1 flex justify-between text-[13px]">
-                      <span className="truncate">{placeName.get(id) ?? "Lugar eliminado"}</span>
-                      <span className="tabular font-medium">{formatDuracion(h)}</span>
+                    <div className="mb-1.5 flex items-baseline justify-between gap-3 text-[13px]">
+                      <span className="truncate">{nombreLugar(placeName.get(id) ?? "Lugar eliminado")}</span>
+                      <span className="tabular shrink-0">
+                        <span className="font-bold">{formatDuracion(h)}</span>
+                        <span className="ml-1.5 text-xs text-muted">{Math.round((h / Math.max(1, total.horas)) * 100)}%</span>
+                      </span>
                     </div>
-                    <div className="h-1 overflow-hidden bg-subtle">
-                      <div className="h-full bg-fg/70" style={{ width: `${(h / maxLugar) * 100}%` }} />
+                    <div className="h-2 overflow-hidden rounded-full bg-subtle">
+                      <div
+                        className={cx("h-full rounded-full transition-[width] duration-300", i === 0 ? "bg-brand" : "bg-brand/45")}
+                        style={{ width: `${Math.max(4, (h / maxLugar) * 100)}%` }}
+                      />
                     </div>
                   </li>
                 ))}
@@ -419,8 +450,8 @@ export default function HorasPage() {
         }
       >
         {form && (
-          <form id="worklog-form" onSubmit={submit} className="grid gap-4">
-            <div className="grid grid-cols-2 gap-3">
+          <form id="worklog-form" onSubmit={submit} className="grid gap-5">
+            <div className="grid grid-cols-[minmax(0,150px)_minmax(0,1fr)] gap-3">
               <Field label="Fecha">{(id) => <Input id={id} type="date" required value={form.fecha} onChange={(e) => setF({ fecha: e.target.value })} />}</Field>
               <Field label="Lugar">
                 {(id) => (
@@ -435,7 +466,7 @@ export default function HorasPage() {
               </Field>
             </div>
             <Field label="Evento">{(id) => <Input id={id} value={form.evento} maxLength={160} onChange={(e) => setF({ evento: e.target.value })} placeholder="Ej. Grados mañana" />}</Field>
-            <Field label="¿A quién le trabajaste?" hint="Opcional. La lista se edita en Ajustes.">
+            <Field label="¿A quién le trabajaste? · opcional">
               {(id) => (
                 <div className="space-y-2">
                   <Select
@@ -443,7 +474,14 @@ export default function HorasPage() {
                     value={form.paraOtro ? "__otro" : form.paraQuien}
                     onChange={(e) => (e.target.value === "__otro" ? setF({ paraOtro: true, paraQuien: "" }) : setF({ paraOtro: false, paraQuien: e.target.value }))}
                   >
-                    <option value="">— Nadie en particular —</option>
+                    <option value="">Nadie en particular</option>
+                    <optgroup label="Dependencia">
+                      {DEPENDENCIAS.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </optgroup>
                     {Object.entries(coordinadores).map(([grupo, nombres]) => (
                       <optgroup key={grupo} label={grupo}>
                         {nombres.map((n) => (
@@ -453,7 +491,7 @@ export default function HorasPage() {
                         ))}
                       </optgroup>
                     ))}
-                    <option value="__otro">Otra persona (escribir el nombre)</option>
+                    <option value="__otro">Otra persona…</option>
                   </Select>
                   {form.paraOtro && (
                     <Input autoFocus value={form.paraQuien} maxLength={80} placeholder="Nombre de la persona" onChange={(e) => setF({ paraQuien: e.target.value })} />
@@ -461,30 +499,67 @@ export default function HorasPage() {
                 </div>
               )}
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Llegada">
-                {(id) => (
-                  <Input
-                    id={id}
-                    type="time"
-                    value={llegadaCalculada(form.salida, form.horas)}
-                    readOnly
-                  />
+
+            {/* Horario: salida + horas; la llegada sale sola */}
+            <div className="rounded-box border border-border bg-subtle/50 p-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Salida">
+                  {(id) => <Input id={id} type="time" value={form.salida} onChange={(e) => setF({ salida: e.target.value })} />}
+                </Field>
+                <div className="space-y-1.5">
+                  <span className="block text-[12px] font-medium uppercase tracking-[0.05em] text-muted">Horas</span>
+                  <div className="flex h-10 items-stretch overflow-hidden rounded-ctl border border-border bg-surface sm:h-9">
+                    <button
+                      type="button"
+                      onClick={() => setHoras(Math.max(1, (Number(form.horas) || 1) - 1))}
+                      className="w-10 text-lg text-muted transition-colors duration-100 hover:bg-subtle hover:text-fg"
+                      aria-label="Una hora menos"
+                    >
+                      −
+                    </button>
+                    <input
+                      inputMode="numeric"
+                      aria-label="Horas"
+                      value={form.horas}
+                      placeholder="4"
+                      onChange={(e) => setHoras(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                      className="tabular w-full min-w-0 border-x border-border bg-transparent text-center font-bold placeholder:font-normal placeholder:text-faint focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setHoras(Math.min(24, (Number(form.horas) || 0) + 1))}
+                      className="w-10 text-lg text-muted transition-colors duration-100 hover:bg-subtle hover:text-fg"
+                      aria-label="Una hora más"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p className="tabular mt-3 text-[13px]">
+                {form.salida && llegadaCalculada(form.salida, form.horas) ? (
+                  <>
+                    <span className="text-muted">De </span>
+                    <span className="font-medium">{hora12(llegadaCalculada(form.salida, form.horas), true)}</span>
+                    <span className="text-muted"> a </span>
+                    <span className="font-medium">{hora12(form.salida, true)}</span>
+                    <span className="text-muted"> · {form.horas} h</span>
+                  </>
+                ) : (
+                  <span className="text-muted">Pon la salida y las horas: la llegada se calcula sola.</span>
                 )}
-              </Field>
-              <Field label="Salida">
-                {(id) => (
-                  <Input
-                    id={id}
-                    type="time"
-                    value={form.salida}
-                    onChange={(e) => setF({ salida: e.target.value })}
-                  />
-                )}
-              </Field>
-              <Field label="Horas" hint="Solo horas completas; la llegada se calcula desde la salida.">{(id) => <Input id={id} inputMode="numeric" value={form.horas} placeholder="5" onChange={(e) => setF({ horas: e.target.value.replace(/\D/g, "").slice(0, 2) })} />}</Field>
-              <Field label="Valor">{(id) => <Input id={id} inputMode="numeric" value={form.valor} onChange={(e) => setF({ valor: formatearNumero(e.target.value) })} placeholder="10.000" />}</Field>
+              </p>
             </div>
+
+            <Field label="Valor" hint={!form.valorManual && form.horas ? `${form.horas} h × ${formatCOP(valorHora)}. Puedes cambiarlo.` : undefined}>
+              {(id) => (
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>
+                  <Input id={id} inputMode="numeric" className="tabular pl-7" value={form.valor} onChange={(e) => setF({ valor: formatearNumero(e.target.value), valorManual: true })} placeholder="10.000" />
+                </div>
+              )}
+            </Field>
+
             {(() => {
               const t = form.horas ? totalDelDia(form.fecha, Number(form.horas), form.id) : 0;
               const m = mensajeDia(t);

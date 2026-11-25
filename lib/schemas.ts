@@ -96,7 +96,11 @@ export function withDefaults(d?: Partial<Defaults> | null): Defaults {
   };
 }
 
-export const LUGARES_INICIALES = ["Teatro Universidad de Medellín", "OPC", "Favor a coordinadores"];
+export const LUGARES_INICIALES = ["Teatro Universidad de Medellín", "OPC", "Mercadeo", "Favor a coordinadores"];
+/** Lugares que se agregan una vez a las cuentas que ya existían (si los borran, no vuelven). */
+export const LUGARES_NUEVOS = ["Mercadeo"];
+/** Dependencias para "¿A quién le trabajaste?" (la dependencia, sin nombres de personas). */
+export const DEPENDENCIAS = ["Mercadeo"];
 export const LUGAR_TEATRO = LUGARES_INICIALES[0];
 
 /** Firma en base64 dentro de users/{uid}.firma: máximo 150 KB. */

@@ -27,9 +27,9 @@ export function estadoDia(horas: number): EstadoDia {
 
 /** Clases de Tailwind para pintar un día con horas en el calendario. */
 export const COLOR_DIA: Record<EstadoDia, string> = {
-  normal: "bg-fg/[0.07] text-fg font-semibold",
-  limite: "bg-warn/20 text-warn font-semibold ring-1 ring-inset ring-warn/50",
-  excedido: "bg-danger text-white font-semibold",
+  normal: "bg-fg text-bg font-bold",
+  limite: "bg-warn text-white font-bold",
+  excedido: "bg-danger text-white font-bold",
 };
 
 const fmtH = (h: number) => `${Number.isInteger(h) ? h : h.toLocaleString("es-CO", { maximumFractionDigits: 2 })} h`;
