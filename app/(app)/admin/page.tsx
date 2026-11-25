@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/components/auth-provider";
 import { useToast } from "@/components/toast";
+import { SECCIONES, TODAS, type Seccion } from "@/lib/permisos";
 import { Badge, Button, EmptyState, Modal, PageHeader, Skeleton, Stat, StatRow } from "@/components/ui";
 
 interface AccountRow {
@@ -17,12 +18,16 @@ interface AccountRow {
   acceso: string[];
   perfilCompleto: boolean;
   tieneFirma: boolean;
+  esAdmin?: boolean;
+  /** null = pendiente de permisos */
+  secciones?: Seccion[] | null;
 }
 
 interface Resumen {
   cuentas: number;
   activas7d: number;
   desactivadas: number;
+  pendientes?: number;
   planillasMes: number;
 }
 
@@ -33,7 +38,7 @@ interface UsersResponse {
   error?: string;
 }
 
-const CACHE = "admin-cuentas-v2"; // cambia si cambia la forma de los datos guardados
+const CACHE = "admin-cuentas-v3"; // cambia si cambia la forma de los datos guardados
 const CADA_MS = 30_000;
 const ACTIVO_MS = 10 * 60_000;
 
@@ -125,6 +130,29 @@ export default function AdminPage() {
   const ordenadas = useMemo(() => [...(users ?? [])].sort((a, b) => ts(b.ultimaActividad) - ts(a.ultimaActividad)), [users]);
   const activos = ordenadas.filter((u) => ahora - ts(u.ultimaActividad) < ACTIVO_MS).length;
 
+  // Permisos por sección: se guardan al marcar o desmarcar (cambio optimista; si falla, se revierte).
+  const [guardandoPermisos, setGuardandoPermisos] = useState<string | null>(null);
+  async function guardarSecciones(account: AccountRow, secciones: Seccion[]) {
+    const antes = account.secciones ?? null;
+    setUsers((cur) => cur?.map((u) => (u.uid === account.uid ? { ...u, secciones } : u)) ?? cur);
+    setGuardandoPermisos(account.uid);
+    try {
+      const idToken = await user.getIdToken();
+      const r = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: account.uid, secciones }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error ?? `Error ${r.status}`);
+    } catch (e) {
+      setUsers((cur) => cur?.map((u) => (u.uid === account.uid ? { ...u, secciones: antes } : u)) ?? cur);
+      toast.error("No se guardaron los permisos", (e as Error).message);
+    } finally {
+      setGuardandoPermisos(null);
+    }
+  }
+
   async function aplicarCambio() {
     if (!cambiar) return;
     setGuardando(true);
@@ -146,6 +174,8 @@ export default function AdminPage() {
       setGuardando(false);
     }
   }
+
+  const pendientes = (users ?? []).filter((u) => !u.esAdmin && u.uid !== user.uid && (u.secciones === null || u.secciones === undefined)).length;
 
   const contexto = users
     ? `${users.length} ${users.length === 1 ? "cuenta" : "cuentas"} · ${activos} ${activos === 1 ? "activa" : "activas"} en los últimos 10 min${actualizado ? ` · actualizado ${hace(new Date(actualizado).toISOString(), ahora).toLowerCase()}` : ""}`
@@ -180,11 +210,27 @@ export default function AdminPage() {
         <>
           {resumen && (
             <StatRow className="mb-8">
-              <Stat label="Cuentas" value={resumen.cuentas} sub={resumen.desactivadas ? `${resumen.desactivadas} desactivada${resumen.desactivadas === 1 ? "" : "s"}` : "todas activas"} />
+              <Stat
+                label="Cuentas"
+                value={resumen.cuentas}
+                sub={
+                  pendientes
+                    ? `${pendientes} pendiente${pendientes === 1 ? "" : "s"} de permisos`
+                    : resumen.desactivadas
+                      ? `${resumen.desactivadas} desactivada${resumen.desactivadas === 1 ? "" : "s"}`
+                      : "todas activas"
+                }
+              />
               <Stat label="Activas" value={resumen.activas7d} sub="en los últimos 7 días" />
               <Stat label="En línea" value={activos} sub="últimos 10 minutos" />
               <Stat label="Planillas" value={resumen.planillasMes} sub="generadas este mes" />
             </StatRow>
+          )}
+          {pendientes > 0 && (
+            <p className="mb-4 border-l-2 border-warn py-1 pl-4 text-[13px]">
+              <span className="font-medium">{pendientes === 1 ? "1 cuenta espera" : `${pendientes} cuentas esperan`} permisos.</span>{" "}
+              <span className="text-muted">Marca las secciones que puede usar; hasta entonces ve la pantalla de &quot;pendiente&quot;.</span>
+            </p>
           )}
           {error && <p className="mb-3 text-xs text-warn">No se pudo actualizar: {error} Se reintenta solo.</p>}
           <div className="hidden border-b border-border px-2 pb-2 sm:grid sm:grid-cols-[minmax(0,1fr)_170px_150px_110px] sm:gap-4">
@@ -208,6 +254,12 @@ export default function AdminPage() {
                       {!account.emailVerificado && <Badge tone="warn">Correo sin verificar</Badge>}
                       {account.deshabilitado && <Badge tone="danger">Desactivada</Badge>}
                     </div>
+                    <Permisos
+                      account={account}
+                      propia={account.uid === user.uid}
+                      guardando={guardandoPermisos === account.uid}
+                      onCambiar={(secciones) => guardarSecciones(account, secciones)}
+                    />
                   </div>
                   <div className="text-[13px]" title={`Último inicio de sesión: ${fechaHora(account.ultimoIngreso)}`}>
                     <p className="flex items-center gap-1.5 font-medium">
@@ -282,5 +334,58 @@ export default function AdminPage() {
         </p>
       </Modal>
     </>
+  );
+}
+
+/** Casillas de secciones de una cuenta. La propia (administradora) siempre tiene todo. */
+function Permisos({
+  account,
+  propia,
+  guardando,
+  onCambiar,
+}: {
+  account: AccountRow;
+  propia: boolean;
+  guardando: boolean;
+  onCambiar: (secciones: Seccion[]) => void;
+}) {
+  if (account.esAdmin || propia) {
+    return <p className="mt-2 text-xs text-muted">Acceso completo (administradora)</p>;
+  }
+  const actuales = account.secciones ?? [];
+  const pendiente = account.secciones === null || account.secciones === undefined;
+  const alternar = (s: Seccion) => onCambiar(TODAS.filter((x) => (x === s ? !actuales.includes(s) : actuales.includes(x))));
+  return (
+    <div className="mt-2.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {pendiente && <span className="mr-1 text-[12px] font-medium text-warn">● Pendiente</span>}
+        {SECCIONES.map((s) => {
+          const on = actuales.includes(s.id);
+          return (
+            <button
+              key={s.id}
+              type="button"
+              role="switch"
+              aria-checked={on}
+              disabled={guardando}
+              onClick={() => alternar(s.id)}
+              className={`inline-flex h-8 items-center gap-1.5 rounded-ctl border px-2.5 text-[12px] font-medium transition-colors duration-100 disabled:opacity-60 ${
+                on ? "border-brand/50 bg-brand-soft/60 text-fg" : "border-border text-muted hover:border-fg/30 hover:text-fg"
+              }`}
+            >
+              <span aria-hidden className={`grid h-3.5 w-3.5 place-items-center rounded-[3px] border text-[10px] leading-none ${on ? "border-brand bg-brand text-brand-fg" : "border-border"}`}>
+                {on ? "✓" : ""}
+              </span>
+              {s.label}
+            </button>
+          );
+        })}
+        {actuales.length < TODAS.length && (
+          <button type="button" disabled={guardando} onClick={() => onCambiar(TODAS)} className="ml-1 text-[12px] text-brand underline-offset-2 hover:underline disabled:opacity-60">
+            Dar todo
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

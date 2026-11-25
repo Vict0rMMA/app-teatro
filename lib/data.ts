@@ -17,6 +17,7 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { firestore } from "./firebase/client";
+import { sanearSecciones, type Seccion } from "./permisos";
 import { DEFAULTS, LUGARES_INICIALES, type Defaults, type GenerateInput } from "./schemas";
 
 export interface Profile {
@@ -94,6 +95,17 @@ export interface StaffDoc {
 }
 
 const db = () => firestore();
+
+// ---------- Permisos (los escribe solo el servidor) ----------
+
+/** Secciones habilitadas de la cuenta, en vivo. null = pendiente (sin documento de permisos). */
+export function watchPermisos(uid: string, cb: (secciones: Seccion[] | null) => void, onError?: (e: Error) => void) {
+  return onSnapshot(
+    doc(db(), "permisos", uid),
+    (s) => cb(s.exists() ? sanearSecciones(s.data()?.secciones) : null),
+    (e) => onError?.(e),
+  );
+}
 
 // ---------- Perfil ----------
 

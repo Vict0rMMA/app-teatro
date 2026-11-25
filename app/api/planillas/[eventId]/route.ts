@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { handleError, requireUser } from "@/lib/api";
+import { handleError, requireSeccion, requireUser } from "@/lib/api";
 import { adminDb } from "@/lib/firebase/admin";
 import { ownedEvent } from "@/lib/server-data";
 
@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export async function DELETE(req: Request, { params }: { params: { eventId: string } }) {
   try {
     const user = await requireUser(req);
+    await requireSeccion(user, "planillas");
     const { ref } = await ownedEvent(user.uid, params.eventId);
     const db = adminDb();
     const logs = await db.collection("workLogs").where("uid", "==", user.uid).where("eventId", "==", params.eventId).get();

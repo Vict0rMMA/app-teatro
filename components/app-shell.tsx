@@ -4,24 +4,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { rutaInicial, type Seccion } from "@/lib/permisos";
 import { useSession } from "./auth-provider";
+import { usePermisos } from "./permisos";
 import { IconClock, IconHistory, IconLogout, IconPlus, IconReceipt, IconSettings } from "./icons";
 import { ThemeToggle } from "./theme";
 import { cx } from "./ui";
 
-const NAV = [
-  { href: "/planillas", label: "Historial" },
-  { href: "/horas", label: "Mis horas" },
-  { href: "/cuenta-cobro", label: "Cuenta de cobro" },
-  { href: "/ajustes", label: "Ajustes" },
+const NAV: Array<{ href: string; label: string; seccion?: Seccion; admin?: boolean }> = [
+  { href: "/planillas", label: "Historial", seccion: "planillas" },
+  { href: "/horas", label: "Mis horas", seccion: "horas" },
+  { href: "/cuenta-cobro", label: "Cuenta de cobro", seccion: "cobro" },
+  { href: "/ajustes", label: "Ajustes", seccion: "ajustes" },
   { href: "/admin", label: "Administración", admin: true },
-];
-
-/** Pestañas del móvil: dos a cada lado del botón central. */
-const TABS = [
-  { href: "/planillas", label: "Historial", icon: IconHistory },
-  { href: "/horas", label: "Horas", icon: IconClock },
-  { href: "/cuenta-cobro", label: "Cobro", icon: IconReceipt },
 ];
 
 /** "Víctor Manuel Monsalve Aguilar" → "Víctor Monsalve" (nombre y primer apellido). */
@@ -79,21 +74,31 @@ function OfflineBanner() {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { profile, user, signOut } = useSession();
-  const isAdmin = !!user.email && user.email.toLocaleLowerCase("en-US") === process.env.NEXT_PUBLIC_ADMIN_EMAIL?.trim().toLocaleLowerCase("en-US");
-  const nav = NAV.filter((n) => !n.admin || isAdmin);
+  const { esAdmin: isAdmin, puede, secciones } = usePermisos();
+  // Solo las secciones habilitadas para esta cuenta (la administradora ve todo).
+  const nav = NAV.filter((n) => (n.admin ? isAdmin : !n.seccion || puede(n.seccion)));
+  const inicio = rutaInicial(secciones) ?? "/";
   // Administración vive dentro de Ajustes en el celular: la pestaña Ajustes queda activa también ahí.
   const ajustesActivo = ["/ajustes", "/admin"].some((h) => isActive(pathname, h));
+  const todas: Array<{ href: string; label: string; icon: typeof IconClock; seccion: Seccion } | "nueva"> = [
+    { href: "/planillas", label: "Historial", icon: IconHistory, seccion: "planillas" },
+    { href: "/horas", label: "Horas", icon: IconClock, seccion: "horas" },
+    "nueva",
+    { href: "/cuenta-cobro", label: "Cobro", icon: IconReceipt, seccion: "cobro" },
+    { href: "/ajustes", label: "Ajustes", icon: IconSettings, seccion: "ajustes" },
+  ];
+  const pestanas = todas.filter((t) => puede(t === "nueva" ? "planillas" : t.seccion));
 
   return (
     <div className="min-h-dvh md:pl-[208px]">
       {/* Barra lateral (escritorio) */}
       <aside className="fixed inset-y-0 left-0 hidden w-[208px] flex-col border-r border-border bg-bg md:flex">
         <div className="px-5 pb-6 pt-6">
-          <Link href="/" aria-label="Inicio">
+          <Link href={inicio} aria-label="Inicio">
             <Logo className="h-9" />
           </Link>
         </div>
-        <div className="px-5 pb-5">
+        <div className={cx("px-5 pb-5", !puede("planillas") && "hidden")}>
           <Link
             href="/"
             className={cx(
@@ -153,37 +158,47 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Encabezado (móvil) */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-bg/90 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:hidden">
-        <Link href="/" aria-label="Inicio">
+        <Link href={inicio} aria-label="Inicio">
           <Logo className="h-7" />
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          {/* Sin Ajustes no hay dónde cerrar sesión en el celular: botón aquí. */}
+          {!puede("ajustes") && (
+            <button onClick={signOut} aria-label="Cerrar sesión" className="grid h-8 w-8 place-items-center rounded-ctl text-muted hover:bg-subtle hover:text-fg">
+              <IconLogout width={16} height={16} />
+            </button>
+          )}
+        </div>
       </header>
 
       <OfflineBanner />
       <main className="mx-auto w-full max-w-[1080px] px-4 pb-32 pt-7 sm:px-8 md:pb-16 md:pt-12">{children}</main>
 
-      {/* Pestañas (móvil) */}
+      {/* Pestañas (móvil): solo las secciones habilitadas; el + central si tiene Planillas. */}
       <nav
         aria-label="Secciones"
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid border-t border-border bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        style={{ gridTemplateColumns: `repeat(${pestanas.length}, minmax(0, 1fr))` }}
       >
-        {TABS.slice(0, 2).map((t) => (
-          <Tab key={t.href} {...t} active={isActive(pathname, t.href)} />
-        ))}
-        <div className="grid place-items-center">
-          <Link
-            href="/"
-            aria-label="Nueva planilla"
-            className={cx(
-              "-mt-5 grid h-12 w-12 place-items-center rounded-full border-4 border-bg text-brand-fg transition-colors duration-100",
-              pathname === "/" ? "bg-brand-hover" : "bg-brand",
-            )}
-          >
-            <IconPlus width={20} height={20} />
-          </Link>
-        </div>
-        <Tab {...TABS[2]} active={isActive(pathname, TABS[2].href)} />
-        <Tab href="/ajustes" label="Ajustes" icon={IconSettings} active={ajustesActivo} />
+        {pestanas.map((t) =>
+          t === "nueva" ? (
+            <div key="nueva" className="grid place-items-center">
+              <Link
+                href="/"
+                aria-label="Nueva planilla"
+                className={cx(
+                  "-mt-5 grid h-12 w-12 place-items-center rounded-full border-4 border-bg text-brand-fg transition-colors duration-100",
+                  pathname === "/" ? "bg-brand-hover" : "bg-brand",
+                )}
+              >
+                <IconPlus width={20} height={20} />
+              </Link>
+            </div>
+          ) : (
+            <Tab key={t.href} {...t} active={t.href === "/ajustes" ? ajustesActivo : isActive(pathname, t.href)} />
+          ),
+        )}
       </nav>
     </div>
   );

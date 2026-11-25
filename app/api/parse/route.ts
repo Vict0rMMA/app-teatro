@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { HttpError, handleError, rateLimit, requireUser } from "@/lib/api";
+import { handleError, HttpError, rateLimit, requireSeccion, requireUser } from "@/lib/api";
 import { MAX_UPLOAD_BYTES, parseRegistro, RegistroError, sanitizeRegistro } from "@/lib/registro";
 
 export const runtime = "nodejs";
@@ -13,6 +13,7 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   try {
     const user = await requireUser(req);
+    await requireSeccion(user, "planillas");
     await rateLimit(user.uid, "parse", 60, 60 * 60 * 1000);
 
     const form = await req.formData().catch(() => null);

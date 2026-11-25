@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { HttpError, handleError, requireUser } from "@/lib/api";
+import { handleError, HttpError, requireSeccion, requireUser } from "@/lib/api";
 import { consecutivoReenvio, generarDocx, leerFormato, revisarFormato, validar, type DatosPersona, type Extraccion } from "@/lib/cuenta-cobro";
 import { convertirDocxAPdf } from "@/lib/gotenberg";
 
@@ -20,7 +20,8 @@ type Body = {
 /** Genera el .docx en memoria. Nada se guarda: ni la cuenta, ni la cédula, ni el celular. */
 export async function POST(req: Request) {
   try {
-    await requireUser(req);
+    const user = await requireUser(req);
+    await requireSeccion(user, "cobro");
     const pdf = new URL(req.url).searchParams.get("format") === "pdf";
     if (pdf && !process.env.GOTENBERG_URL) throw new HttpError(503, "La conversión a PDF requiere configurar Gotenberg en el servidor.", "PDF_NO_CONFIGURADO");
     const body = (await req.json().catch(() => null)) as Body | null;

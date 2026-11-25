@@ -1,5 +1,5 @@
 import PizZip from "pizzip";
-import { HttpError, handleError, requireUser } from "@/lib/api";
+import { handleError, HttpError, requireSeccion, requireUser } from "@/lib/api";
 import { planillasDeEvento, registroDeEvento } from "@/lib/planillas-evento";
 import { eventStaff, loadFirma, ownedEvent } from "@/lib/server-data";
 
@@ -28,6 +28,7 @@ function send(buf: Buffer, type: string, name: string) {
 export async function GET(req: Request, { params }: { params: { eventId: string; file: string } }) {
   try {
     const user = await requireUser(req);
+    await requireSeccion(user, "planillas");
     const { data } = await ownedEvent(user.uid, params.eventId);
     const needsPlanillas = params.file !== "registro";
     const needsStaff = params.file === "registro" || params.file === "zip";

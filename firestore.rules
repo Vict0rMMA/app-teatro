@@ -49,6 +49,12 @@ service cloud.firestore {
       allow create, update: if isOwner(uid) && validProfile(request.resource.data);
     }
 
+    // Permisos por sección: cada cuenta lee los suyos; solo el servidor los escribe.
+    match /permisos/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
     match /events/{eventId} {
       allow read: if owns();
       // Crear y borrar lo hace el servidor (borra también el personal).

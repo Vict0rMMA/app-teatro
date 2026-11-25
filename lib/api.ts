@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { adminAppCheck, adminAuth, adminDb } from "./firebase/admin";
 import { sendErrorAlert } from "./error-alerts";
+import { cuentaAnterior, esAdminEmail, sanearSecciones, type Seccion } from "./permisos";
 
 export class HttpError extends Error {
   constructor(
@@ -55,6 +56,22 @@ export async function requireUser(req: Request): Promise<AuthedUser> {
     }
   }
   return { uid: decoded.uid, email: decoded.email };
+}
+
+/**
+ * Exige que la cuenta tenga habilitada la sección (permisos/{uid}.secciones). La administradora
+ * siempre puede. Sin documento de permisos = cuenta pendiente: no puede nada.
+ */
+export async function requireSeccion(user: AuthedUser, seccion: Seccion): Promise<void> {
+  if (esAdminEmail(user.email, process.env.ADMIN_EMAIL)) return;
+  const snap = await adminDb().collection("permisos").doc(user.uid).get();
+  if (!snap.exists) {
+    // Cuenta anterior a los permisos: conserva acceso completo.
+    if (cuentaAnterior((await adminAuth().getUser(user.uid)).metadata.creationTime)) return;
+    throw new HttpError(403, "Tu cuenta está pendiente: el administrador aún no te ha dado acceso.", "CUENTA_PENDIENTE");
+  }
+  if (!sanearSecciones(snap.data()?.secciones).includes(seccion))
+    throw new HttpError(403, "No tienes acceso a esta sección. Pídeselo al administrador.", "SIN_PERMISO");
 }
 
 /**

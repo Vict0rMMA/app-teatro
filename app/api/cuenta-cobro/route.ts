@@ -1,6 +1,6 @@
 import { GoogleGenAI, type Part } from "@google/genai";
 import { NextResponse } from "next/server";
-import { HttpError, handleError, rateLimit, requireUser } from "@/lib/api";
+import { handleError, HttpError, rateLimit, requireSeccion, requireUser } from "@/lib/api";
 import { leerConsolidadoTexto } from "@/lib/consolidado-texto";
 import { validar, type Extraccion } from "@/lib/cuenta-cobro";
 import { SYSTEM_PROMPT } from "@/lib/prompt";
@@ -47,6 +47,7 @@ export async function POST(req: Request) {
   const inicio = Date.now();
   try {
     const user = await requireUser(req);
+    await requireSeccion(user, "cobro");
 
     const body = (await req.json().catch(() => null)) as Body | null;
     if (!body) throw new HttpError(400, "Cuerpo inválido.");

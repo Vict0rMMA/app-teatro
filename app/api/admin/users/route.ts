@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { HttpError, handleError, requireAdmin, requireUser } from "@/lib/api";
+import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { cuentaAnterior, esAdminEmail, sanearSecciones, TODAS } from "@/lib/permisos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +24,25 @@ export async function GET(req: Request) {
     const profiles = result.users.length
       ? await adminDb().getAll(...result.users.map((account) => adminDb().collection("users").doc(account.uid)))
       : [];
+    const permisos = result.users.length
+      ? await adminDb().getAll(...result.users.map((account) => adminDb().collection("permisos").doc(account.uid)))
+      : [];
+    // Se guarda acceso completo para la administradora y para las cuentas anteriores a los permisos que
+    // aún no tienen documento (así las reglas de Firestore las reconocen). Las nuevas quedan pendientes.
+    const completas = new Set<string>();
+    await Promise.all(
+      result.users.map((account, i) => {
+        const esAdmin = esAdminEmail(account.email, process.env.ADMIN_EMAIL);
+        const anteriorSinPermisos = !permisos[i]?.exists && cuentaAnterior(account.metadata.creationTime);
+        if (!esAdmin && !anteriorSinPermisos) return null;
+        if (esAdmin && sanearSecciones(permisos[i]?.data()?.secciones).length === TODAS.length) return null;
+        completas.add(account.uid);
+        return adminDb()
+          .collection("permisos")
+          .doc(account.uid)
+          .set({ secciones: TODAS, actualizadoEn: FieldValue.serverTimestamp(), actualizadoPor: esAdmin ? "administradora" : "cuenta-anterior" }, { merge: true });
+      }),
+    );
 
     // Totales de toda la app (solo números): planillas generadas este mes.
     const inicioMes = new Date();
@@ -47,6 +68,14 @@ export async function GET(req: Request) {
         perfilCompleto: !!perfil?.nombre,
         tieneFirma: !!perfil?.firma,
         activo7d: !!actividad && ahora - new Date(actividad).getTime() < 7 * DIA,
+        esAdmin: esAdminEmail(account.email, process.env.ADMIN_EMAIL),
+        // null = pendiente (aún sin permisos asignados).
+        secciones:
+          esAdminEmail(account.email, process.env.ADMIN_EMAIL) || completas.has(account.uid)
+            ? TODAS
+            : permisos[index]?.exists
+              ? sanearSecciones(permisos[index]!.data()?.secciones)
+              : null,
       };
     });
 
@@ -58,6 +87,7 @@ export async function GET(req: Request) {
           cuentas: users.length,
           activas7d: users.filter((u) => u.activo7d).length,
           desactivadas: users.filter((u) => u.deshabilitado).length,
+          pendientes: users.filter((u) => u.secciones === null).length,
           planillasMes,
         },
       },
@@ -68,16 +98,28 @@ export async function GET(req: Request) {
   }
 }
 
-/** Desactiva o reactiva una cuenta. No permite desactivar la propia. */
+/**
+ * Cambia una cuenta: desactivar/reactivar ({ deshabilitado }) o sus secciones ({ secciones }).
+ * No permite tocar la propia (la administradora siempre tiene todo).
+ */
 export async function PATCH(req: Request) {
   try {
     const user = await requireUser(req);
     requireAdmin(user);
-    const body = (await req.json().catch(() => null)) as { uid?: string; deshabilitado?: boolean } | null;
-    if (!body?.uid || typeof body.deshabilitado !== "boolean") throw new HttpError(400, "Datos inválidos.");
-    if (body.uid === user.uid) throw new HttpError(400, "No puedes desactivar tu propia cuenta.", "PROPIA_CUENTA");
+    const body = (await req.json().catch(() => null)) as { uid?: string; deshabilitado?: boolean; secciones?: unknown } | null;
+    if (!body?.uid || (typeof body.deshabilitado !== "boolean" && !Array.isArray(body.secciones))) throw new HttpError(400, "Datos inválidos.");
+    if (body.uid === user.uid) throw new HttpError(400, "Tu cuenta siempre tiene acceso completo.", "PROPIA_CUENTA");
 
-    await adminAuth().updateUser(body.uid, { disabled: body.deshabilitado });
+    if (Array.isArray(body.secciones)) {
+      const secciones = sanearSecciones(body.secciones);
+      await adminDb()
+        .collection("permisos")
+        .doc(body.uid)
+        .set({ secciones, actualizadoEn: FieldValue.serverTimestamp(), actualizadoPor: user.uid });
+      return NextResponse.json({ ok: true, secciones }, { headers: NO_CACHE });
+    }
+
+    await adminAuth().updateUser(body.uid, { disabled: body.deshabilitado! });
     // Al desactivar, se cierran sus sesiones abiertas.
     if (body.deshabilitado) await adminAuth().revokeRefreshTokens(body.uid);
     return NextResponse.json({ ok: true }, { headers: NO_CACHE });

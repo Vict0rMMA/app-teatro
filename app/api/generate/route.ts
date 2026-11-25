@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { HttpError, handleError, rateLimit, requireUser } from "@/lib/api";
+import { handleError, HttpError, rateLimit, requireSeccion, requireUser } from "@/lib/api";
 import { isPng, renderRegistro } from "@/lib/docx/planillas";
 import { adminDb } from "@/lib/firebase/admin";
 import { mensajeWhatsapp, nombresArchivo, normalize, titleCase } from "@/lib/format";
@@ -25,6 +25,7 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   try {
     const user = await requireUser(req);
+    await requireSeccion(user, "planillas");
     const form = await req.formData().catch(() => null);
     if (!form) throw new HttpError(400, "Solicitud inválida.");
     const input = generateSchema.parse(JSON.parse(String(form.get("payload") ?? "{}")));
