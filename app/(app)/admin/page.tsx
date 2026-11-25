@@ -33,7 +33,7 @@ interface UsersResponse {
   error?: string;
 }
 
-const CACHE = "admin-cuentas";
+const CACHE = "admin-cuentas-v2"; // cambia si cambia la forma de los datos guardados
 const CADA_MS = 30_000;
 const ACTIVO_MS = 10 * 60_000;
 
@@ -202,7 +202,7 @@ export default function AdminPage() {
                     <p className="truncate text-sm font-medium">{account.nombre}</p>
                     <p className="truncate text-xs text-muted">{account.email || "Sin correo"}</p>
                     <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-                      <Badge>{account.acceso.join(" + ") || "Sin método"}</Badge>
+                      <Badge>{(account.acceso ?? []).join(" + ") || "Sin método"}</Badge>
                       <Badge tone={account.perfilCompleto ? "ok" : "warn"}>{account.perfilCompleto ? "Perfil listo" : "Sin perfil"}</Badge>
                       <Badge tone={account.tieneFirma ? "ok" : "neutral"}>{account.tieneFirma ? "Con firma" : "Sin firma"}</Badge>
                       {!account.emailVerificado && <Badge tone="warn">Correo sin verificar</Badge>}
