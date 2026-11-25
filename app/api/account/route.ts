@@ -20,6 +20,6 @@ export async function DELETE(req: Request) {
     await adminAuth().deleteUser(user.uid);
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return handleError(err);
+    return handleError(err, new URL(req.url).pathname);
   }
 }

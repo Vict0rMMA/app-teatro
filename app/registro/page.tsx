@@ -9,6 +9,7 @@ import { GoogleButton } from "@/components/google-button";
 import { Button, Field, Input } from "@/components/ui";
 import { authMessage } from "@/lib/auth-errors";
 import { firebaseAuth } from "@/lib/firebase/client";
+import { reportAuthFailure } from "@/lib/report-client-error";
 
 export default function RegistroPage() {
   const [email, setEmail] = useState("");
@@ -27,6 +28,7 @@ export default function RegistroPage() {
       const cred = await createUserWithEmailAndPassword(firebaseAuth(), email.trim(), password);
       await sendEmailVerification(cred.user);
     } catch (err) {
+      reportAuthFailure("Registro", err);
       setError(authMessage(err));
       setLoading(false);
     }

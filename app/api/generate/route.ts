@@ -166,6 +166,6 @@ export async function POST(req: Request) {
       sinFirma: !firmaEvento && !profile.firma,
     });
   } catch (err) {
-    return handleError(err);
+    return handleError(err, new URL(req.url).pathname);
   }
 }

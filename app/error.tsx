@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { reportClientError } from "@/lib/report-client-error";
 
 /**
  * Si una pantalla falla en el navegador, en vez de la página blanca de Next ("Application error")
@@ -10,6 +11,7 @@ import { useEffect } from "react";
 export default function ErrorDePantalla({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error("[pantalla]", error);
+    reportClientError({ source: "Pantalla", message: error.message || "Error de renderizado", stack: error.stack, digest: error.digest });
   }, [error]);
 
   return (

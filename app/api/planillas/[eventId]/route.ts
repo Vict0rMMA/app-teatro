@@ -19,6 +19,6 @@ export async function DELETE(req: Request, { params }: { params: { eventId: stri
     await db.recursiveDelete(ref);
     return NextResponse.json({ ok: true, horasBorradas: logs.size });
   } catch (err) {
-    return handleError(err);
+    return handleError(err, new URL(req.url).pathname);
   }
 }

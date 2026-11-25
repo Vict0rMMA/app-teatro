@@ -53,6 +53,6 @@ export async function GET(req: Request, { params }: { params: { eventId: string;
     if (!f) throw new HttpError(404, "Archivo no encontrado.", "NO_ENCONTRADO");
     return send(f.buffer, DOCX, f.name);
   } catch (err) {
-    return handleError(err);
+    return handleError(err, new URL(req.url).pathname);
   }
 }

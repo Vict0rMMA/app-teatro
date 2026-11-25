@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { adminAppCheck, adminAuth, adminDb } from "./firebase/admin";
+import { sendErrorAlert } from "./error-alerts";
 
 export class HttpError extends Error {
   constructor(
@@ -79,7 +80,7 @@ export async function rateLimit(uid: string, bucket: string, limit: number, wind
   });
 }
 
-export function handleError(err: unknown) {
+export async function handleError(err: unknown, path = "API") {
   if (err instanceof HttpError) {
     return NextResponse.json({ error: err.message, code: err.code, ...err.extra }, { status: err.status });
   }
@@ -90,6 +91,8 @@ export function handleError(err: unknown) {
       { status: 400 },
     );
   }
-  console.error(err);
+  const error = err instanceof Error ? err : new Error(String(err));
+  console.error(`[api] ${path}`, error);
+  await sendErrorAlert({ source: "Error del servidor", path, message: error.message, stack: error.stack });
   return NextResponse.json({ error: "Ocurrió un error inesperado. Intenta de nuevo.", code: "INTERNO" }, { status: 500 });
 }

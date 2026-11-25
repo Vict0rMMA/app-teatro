@@ -64,7 +64,7 @@ export async function GET(req: Request) {
       { headers: NO_CACHE },
     );
   } catch (err) {
-    return handleError(err);
+    return handleError(err, new URL(req.url).pathname);
   }
 }
 
@@ -82,6 +82,6 @@ export async function PATCH(req: Request) {
     if (body.deshabilitado) await adminAuth().revokeRefreshTokens(body.uid);
     return NextResponse.json({ ok: true }, { headers: NO_CACHE });
   } catch (err) {
-    return handleError(err);
+    return handleError(err, new URL(req.url).pathname);
   }
 }

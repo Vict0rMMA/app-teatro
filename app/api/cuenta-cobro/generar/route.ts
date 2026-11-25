@@ -66,6 +66,6 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    return handleError(err);
+    return handleError(err, new URL(req.url).pathname);
   }
 }

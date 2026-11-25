@@ -4,6 +4,7 @@ import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from "firebas
 import { useState } from "react";
 import { authMessage } from "@/lib/auth-errors";
 import { firebaseAuth } from "@/lib/firebase/client";
+import { reportAuthFailure } from "@/lib/report-client-error";
 import { IconGoogle } from "./icons";
 import { useToast } from "./toast";
 import { Button } from "./ui";
@@ -26,6 +27,7 @@ export function GoogleButton({ verb = "Continuar" }: { verb?: string }) {
         return;
       }
       if (code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request") {
+        reportAuthFailure("Google", err);
         toast.error("No se pudo entrar con Google", authMessage(err));
       }
       setLoading(false);

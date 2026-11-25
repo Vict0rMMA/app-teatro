@@ -9,6 +9,7 @@ import { GoogleButton } from "@/components/google-button";
 import { Button, Field, Input } from "@/components/ui";
 import { authMessage } from "@/lib/auth-errors";
 import { firebaseAuth } from "@/lib/firebase/client";
+import { reportAuthFailure } from "@/lib/report-client-error";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -23,6 +24,7 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(firebaseAuth(), email.trim(), password);
     } catch (err) {
+      reportAuthFailure("Inicio de sesión", err);
       setError(authMessage(err));
       setLoading(false);
     }
