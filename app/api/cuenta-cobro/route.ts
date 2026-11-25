@@ -1,6 +1,7 @@
 import { GoogleGenAI, type Part } from "@google/genai";
 import { NextResponse } from "next/server";
 import { HttpError, handleError, rateLimit, requireUser } from "@/lib/api";
+import { leerConsolidadoTexto } from "@/lib/consolidado-texto";
 import { validar, type Extraccion } from "@/lib/cuenta-cobro";
 import { SYSTEM_PROMPT } from "@/lib/prompt";
 import { comparar, sanearRegistros } from "@/lib/registros";
@@ -10,11 +11,14 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Modelos en orden. Si uno está saturado (503), sin cuota (429) o se demora, se pasa al siguiente.
- * Los "lite" responden en 2–6 s; con tope por intento la ruta no pasa de los 60 s de Vercel.
+ * Solo para fotos/capturas: las celdas pegadas se leen con código (lib/consolidado-texto.ts).
+ * Modelos en orden; si uno está saturado (503), sin cuota (429) o falla, se pasa al siguiente.
+ * Comparten un presupuesto de tiempo: si el primero falla rápido, el siguiente usa lo que queda.
+ * Un consolidado de 28 filas tarda ~10 s en un modelo "lite".
  */
-const MODELOS = [...new Set([process.env.GEMINI_MODEL, "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash"].filter(Boolean) as string[])];
-const TOPE_MS = [22_000, 15_000, 15_000];
+const MODELOS = [...new Set([process.env.GEMINI_MODEL, "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.5-flash"].filter(Boolean) as string[])];
+const PRESUPUESTO_MS = 52_000; // deja margen dentro de los 60 s de Vercel
+const MINIMO_MS = 8_000; // con menos tiempo no vale la pena intentar otro modelo
 const TIPOS_IMAGEN = ["image/png", "image/jpeg", "image/webp"] as const;
 const MAX_IMAGEN_B64 = 7_000_000; // ~5 MB
 const MAX_TEXTO = 50_000;
@@ -39,11 +43,9 @@ function parseJson(raw: string): Extraccion {
 }
 
 export async function POST(req: Request) {
+  const inicio = Date.now();
   try {
     const user = await requireUser(req);
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new HttpError(503, "Falta configurar GEMINI_API_KEY en el servidor.", "SIN_IA");
-    await rateLimit(user.uid, "cuenta-cobro", 20, 60 * 60 * 1000);
 
     const body = (await req.json().catch(() => null)) as Body | null;
     if (!body) throw new HttpError(400, "Cuerpo inválido.");
@@ -57,6 +59,16 @@ export async function POST(req: Request) {
       if (!imagen.base64 || imagen.base64.length > MAX_IMAGEN_B64) throw new HttpError(413, "Imagen vacía o mayor a 5 MB.");
     }
 
+    // Celdas pegadas de Excel: se leen con código, sin IA (instantáneo, exacto y nada sale del servidor).
+    if (texto && !imagen) {
+      const local = leerConsolidadoTexto(texto, body.persona?.slice(0, 120));
+      if (local) return responder(local, body.registros);
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new HttpError(503, "Falta configurar GEMINI_API_KEY en el servidor.", "SIN_IA");
+    await rateLimit(user.uid, "cuenta-cobro", 20, 60 * 60 * 1000);
+
     const parts: Part[] = [];
     if (imagen) parts.push({ inlineData: { mimeType: imagen.mediaType, data: imagen.base64 } });
     parts.push({
@@ -69,7 +81,9 @@ export async function POST(req: Request) {
     const ai = new GoogleGenAI({ apiKey });
     let raw = "";
     let ultimoStatus: number | undefined;
-    for (const [i, model] of MODELOS.slice(0, 3).entries()) {
+    for (const model of MODELOS) {
+      const queda = PRESUPUESTO_MS - (Date.now() - inicio);
+      if (queda < MINIMO_MS) break;
       try {
         const res = await ai.models.generateContent({
           model,
@@ -78,8 +92,8 @@ export async function POST(req: Request) {
             systemInstruction: SYSTEM_PROMPT,
             responseMimeType: "application/json",
             temperature: 0,
-            abortSignal: AbortSignal.timeout(TOPE_MS[i] ?? 15_000),
-            httpOptions: { timeout: TOPE_MS[i] ?? 15_000 },
+            abortSignal: AbortSignal.timeout(queda),
+            httpOptions: { timeout: queda },
           },
         });
         raw = res.text ?? "";
@@ -95,7 +109,7 @@ export async function POST(req: Request) {
     }
     if (!raw) {
       if (ultimoStatus === 429) throw new HttpError(429, "Se acabó la cuota de Gemini por ahora. Intenta en un rato.", "IA_CUOTA");
-      throw new HttpError(502, "Gemini está saturado o no respondió. Intenta de nuevo en un momento.", "IA");
+      throw new HttpError(502, "Gemini está saturado y no alcanzó a leer la imagen. Intenta de nuevo, o copia las celdas del Excel y pégalas: así no se usa Gemini.", "IA");
     }
 
     let datos: Extraccion;
@@ -105,10 +119,13 @@ export async function POST(req: Request) {
       console.error("[cuenta-cobro] JSON", e);
       throw new HttpError(502, "La lectura del consolidado salió incompleta. Intenta de nuevo o pega el texto.", "IA_JSON");
     }
-
-    const comparacion = comparar(datos.filas, sanearRegistros(body.registros), datos.mes, datos.anio);
-    return NextResponse.json({ datos, validacion: validar(datos), comparacion });
+    return responder(datos, body.registros);
   } catch (err) {
     return handleError(err);
   }
+}
+
+function responder(datos: Extraccion, registros: unknown) {
+  const comparacion = comparar(datos.filas, sanearRegistros(registros), datos.mes, datos.anio);
+  return NextResponse.json({ datos, validacion: validar(datos), comparacion });
 }
