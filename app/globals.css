@@ -55,12 +55,17 @@
   textarea {
     font-size: 16px; /* evita el zoom de iOS al enfocar */
   }
-  @media (min-width: 640px) {
+  @media (min-width: 640px) and (pointer: fine) {
     input,
     select,
     textarea {
       font-size: 14px;
     }
+  }
+  button,
+  a,
+  [role="button"] {
+    touch-action: manipulation;
   }
   :focus-visible {
     @apply outline-none ring-2 ring-brand/50 ring-offset-0;

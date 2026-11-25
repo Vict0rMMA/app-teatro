@@ -24,7 +24,7 @@ export default function CuentaCobroPage() {
   return (
     <>
       <PageHeader eyebrow="Cuenta de cobro" title="Arma tu cuenta del mes" description={contexto} />
-      <CuentaCobro registros={registros} />
+      <CuentaCobro registros={registros} pdfDisponible={process.env.NEXT_PUBLIC_PDF_CONVERTER_ENABLED === "true"} />
     </>
   );
 }

@@ -38,6 +38,7 @@ function parseJson(raw: string): Extraccion {
   const d = JSON.parse(limpio.slice(ini, fin + 1)) as Extraccion & { comparacion?: unknown };
   if (!Array.isArray(d.filas) || !d.persona || !d.mes || !d.anio) throw new Error("JSON incompleto.");
   d.alertas ??= [];
+  d.persona.cedula = String(d.persona.cedula ?? "").replace(/\D/g, "");
   delete d.comparacion; // la comparación la hace el código, no la IA
   return d;
 }

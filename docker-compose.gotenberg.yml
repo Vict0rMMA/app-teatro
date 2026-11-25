@@ -1,0 +1,12 @@
+services:
+  gotenberg:
+    image: gotenberg/gotenberg:9
+    restart: unless-stopped
+    environment:
+      API_ENABLE_BASIC_AUTH: "true"
+      GOTENBERG_API_BASIC_AUTH_USERNAME: ${GOTENBERG_USERNAME:?Define GOTENBERG_USERNAME}
+      GOTENBERG_API_BASIC_AUTH_PASSWORD: ${GOTENBERG_PASSWORD:?Define GOTENBERG_PASSWORD}
+      LIBREOFFICE_DISABLE_ROUTES: "false"
+      CHROMIUM_DISABLE_ROUTES: "true"
+    ports:
+      - "127.0.0.1:3000:3000"

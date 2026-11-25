@@ -67,7 +67,7 @@ function moda<T>(xs: T[]): T | undefined {
 }
 
 /** ¿El nombre o la cédula de la fila corresponde a la persona buscada? */
-function esLaPersona(buscada: string, nombre: string, cedula: string): boolean {
+export function esLaPersona(buscada: string, nombre: string, cedula: string): boolean {
   const b = sinTildes(buscada);
   if (!b) return true;
   if (/^\d{5,12}$/.test(b.replace(/\D/g, "")) && b.replace(/\D/g, "") === cedula) return true;
@@ -104,9 +104,19 @@ export function leerConsolidadoTexto(texto: string, persona?: string): Extraccio
   const alertas: Alerta[] = [];
   type Cruda = Fila & { _nombre: string; _cedula: string };
   const crudas: Cruda[] = [];
+  let totales: { horas: number | null; valor: number | null } | undefined;
   for (const fila of lineas.slice(inicio)) {
     const fecha = fechaDMA(col(fila, "fecha"));
-    if (!fecha) continue; // títulos, subtotales o filas vacías
+    if (!fecha) {
+      // Fila de TOTAL del Excel (no subtotales): se guarda para cruzar la suma.
+      const t = sinTildes(fila.join(" "));
+      if (/\bTOTAL\b/.test(t) && !t.includes("SUBTOTAL")) {
+        const h = Number(col(fila, "horas").replace(",", "."));
+        const v = Number(soloDigitos(col(fila, "total")));
+        totales = { horas: col(fila, "horas") && Number.isFinite(h) ? h : null, valor: v > 0 ? v : null };
+      }
+      continue; // títulos, subtotales o filas vacías
+    }
     const horas = Number(col(fila, "horas").replace(",", "."));
     let ini = hora24(col(fila, "inicio"));
     let fin = hora24(col(fila, "fin"));
@@ -184,5 +194,7 @@ export function leerConsolidadoTexto(texto: string, persona?: string): Extraccio
     anio,
     filas,
     alertas,
+    // El total del Excel solo sirve si todas las filas son de la persona.
+    ...(totales && mias.length === crudas.length ? { totales } : {}),
   };
 }

@@ -23,6 +23,8 @@ export type Extraccion = {
   anio: number;
   filas: Fila[];
   alertas: Alerta[];
+  /** Fila de TOTAL del propio consolidado, si venía al pegar: sirve para cruzar la suma. */
+  totales?: { horas: number | null; valor: number | null };
 };
 
 export type Grupo = { centro: string; nombre: string; filas: Fila[]; horas: number; valor: number };
@@ -47,6 +49,15 @@ const toMin = (h: string): number => {
   if (!m) throw new Error(`Hora inválida: "${h}"`);
   return Number(m[1]) * 60 + Number(m[2]);
 };
+/** Igual que toMin pero sin lanzar (para ordenar aunque una hora venga mal; ese error ya se reporta). */
+const minutos = (h: string): number => {
+  try {
+    return toMin(h);
+  } catch {
+    return 0;
+  }
+};
+const nombreMes = (mes: number) => MESES[mes - 1] ?? `mes ${mes}`;
 
 const fechaKey = (f: string) => f.split("/").reverse().join("");
 const pesos = (n: number) => `$ ${n.toLocaleString("es-CO", { maximumFractionDigits: 0 })}`;
@@ -58,8 +69,13 @@ export const hora12 = (h: string) => {
 
 export function validar(d: Extraccion): Validacion {
   const errores: string[] = [];
-  const alertas = d.alertas.map((a) => `${a.fila !== null ? `Fila ${a.fila + 1}: ` : ""}${a.mensaje}`);
+  const alertas = (d.alertas ?? []).map((a) => `${a.fila !== null ? `Fila ${a.fila + 1}: ` : ""}${a.mensaje}`);
   if (!d.filas.length) errores.push("No hay filas para la cuenta de cobro.");
+  if (!(d.mes >= 1 && d.mes <= 12) || !(d.anio >= 2000 && d.anio <= 2100))
+    errores.push("No se pudo saber de qué mes es el consolidado. Revisa las fechas.");
+  if (!d.persona?.nombre?.trim()) errores.push("Falta el nombre de la persona.");
+  if (!/^\d{5,12}$/.test(d.persona?.cedula ?? ""))
+    errores.push(`La cédula "${d.persona?.cedula ?? ""}" no es válida: debe tener solo números (5 a 12). Revísala en el consolidado.`);
 
   const porDia: Record<string, Fila[]> = {};
   const vistos = new Set<string>();
@@ -68,7 +84,7 @@ export function validar(d: Extraccion): Validacion {
     const n = `Fila ${i + 1} (${f.fecha} ${f.evento})`;
     if (!/^\d{2}\/\d{2}\/\d{4}$/.test(f.fecha)) errores.push(`${n}: fecha inválida.`);
     const [, mm, aa] = f.fecha.split("/").map(Number);
-    if (mm !== d.mes || aa !== d.anio) errores.push(`${n}: la fecha no es de ${MESES[d.mes - 1]} ${d.anio}.`);
+    if (mm !== d.mes || aa !== d.anio) errores.push(`${n}: la fecha no es de ${nombreMes(d.mes)} ${d.anio}.`);
     try {
       const dur = (toMin(f.hora_fin) - toMin(f.hora_inicio)) / 60;
       if (dur <= 0) errores.push(`${n}: la hora fin es menor o igual a la de inicio.`);
@@ -89,16 +105,16 @@ export function validar(d: Extraccion): Validacion {
     const h = filas.reduce((s, f) => s + f.horas, 0);
     horasPorDia[dia] = h;
     if (h > MAX_HORAS_DIA) errores.push(`${dia}: suma ${h} h (máximo ${MAX_HORAS_DIA} h/día salvo evento autorizado).`);
-    const orden = [...filas].sort((a, b) => toMin(a.hora_inicio) - toMin(b.hora_inicio));
+    const orden = [...filas].sort((a, b) => minutos(a.hora_inicio) - minutos(b.hora_inicio));
     for (let i = 1; i < orden.length; i++) {
-      if (toMin(orden[i].hora_inicio) < toMin(orden[i - 1].hora_fin))
+      if (minutos(orden[i].hora_inicio) < minutos(orden[i - 1].hora_fin))
         errores.push(`${dia}: se cruzan "${orden[i - 1].evento}" y "${orden[i].evento}".`);
     }
   }
 
   const mapa = new Map<string, Grupo>();
   [...d.filas]
-    .sort((a, b) => fechaKey(a.fecha).localeCompare(fechaKey(b.fecha)) || toMin(a.hora_inicio) - toMin(b.hora_inicio))
+    .sort((a, b) => fechaKey(a.fecha).localeCompare(fechaKey(b.fecha)) || minutos(a.hora_inicio) - minutos(b.hora_inicio))
     .forEach((f) => {
       const c = f.centro_costos.replace(/\D/g, "").slice(0, 8);
       const g = mapa.get(c) ?? { centro: c, nombre: f.dependencia, filas: [], horas: 0, valor: 0 };
@@ -111,7 +127,13 @@ export function validar(d: Extraccion): Validacion {
   const totalHoras = grupos.reduce((s, g) => s + g.horas, 0);
   const totalValor = grupos.reduce((s, g) => s + g.valor, 0);
 
-  const asunto = `Cuenta de cobro ${MESES[d.mes - 1].toLowerCase()}`;
+  // Cruce con la fila de TOTAL del propio Excel: si no cuadra, falta o sobra alguna fila.
+  if (d.totales?.horas != null && d.totales.horas !== totalHoras)
+    errores.push(`La suma de las filas da ${totalHoras} h, pero el total del consolidado dice ${d.totales.horas} h. Revisa que copiaste todas las filas.`);
+  if (d.totales?.valor != null && d.totales.valor !== totalValor)
+    errores.push(`La suma de las filas da ${pesosSinEspacio(totalValor)}, pero el total del consolidado dice ${pesosSinEspacio(d.totales.valor)}.`);
+
+  const asunto = `Cuenta de cobro ${nombreMes(d.mes).toLowerCase()}`;
   if (asunto.length > MAX_ASUNTO) errores.push("El asunto supera 60 caracteres.");
 
   return {
@@ -129,6 +151,36 @@ export function validar(d: Extraccion): Validacion {
     },
   };
 }
+
+export type DatosFormato = { consecutivo: string | null; mes: number | null; anio: number | null };
+
+/** Lee del formato DOCX el consecutivo ("N° 2026-10") y el período ("… de Octubre del año 2026"). */
+export async function leerFormato(plantilla: ArrayBuffer | Uint8Array): Promise<DatosFormato> {
+  const zip = await JSZip.loadAsync(plantilla);
+  const xml = (await zip.file("word/document.xml")?.async("string")) ?? "";
+  const parrafos = (xml.match(/<w:p\b[^>]*>[\s\S]*?<\/w:p>/g) ?? []).map((p) =>
+    [...p.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)].map((m) => decodificarXml(m[1]!)).join(""),
+  );
+  const texto = parrafos.join("\n");
+  const cons = /N°\s*(\d{4})-(\d{2})(A*)/.exec(texto);
+  const per = new RegExp(`(${MESES.join("|")})\\s+del\\s+año\\s+(\\d{4})`, "i").exec(texto);
+  const mesPer = per ? MESES.findIndex((m) => m.toLowerCase() === per[1]!.toLowerCase()) + 1 : null;
+  return {
+    consecutivo: cons ? `${cons[1]}-${cons[2]}${cons[3]}` : null,
+    mes: mesPer ?? (cons ? Number(cons[2]) : null),
+    anio: per ? Number(per[2]) : cons ? Number(cons[1]) : null,
+  };
+}
+
+/** Mensaje de error si el formato no es del mismo mes que el consolidado; null si cuadra. */
+export function revisarFormato(f: DatosFormato, mes: number, anio: number): string | null {
+  if (f.mes == null || f.anio == null) return null;
+  if (f.mes === mes && f.anio === anio) return null;
+  return `El formato es de ${nombreMes(f.mes)} ${f.anio} y el consolidado es de ${nombreMes(mes)} ${anio}. Sube el formato de ${nombreMes(mes).toLowerCase()} que te enviaron (su consecutivo y período no se cambian).`;
+}
+
+/** Consecutivo de reenvío: el del formato con una A al final (2026-10 → 2026-10A). */
+export const consecutivoReenvio = (f: DatosFormato) => (f.consecutivo ? `${f.consecutivo}A` : null);
 
 export type DatosPersona = {
   nombre: string;

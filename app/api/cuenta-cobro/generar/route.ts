@@ -2,10 +2,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { HttpError, handleError, requireUser } from "@/lib/api";
-import { generarDocx, validar, type DatosPersona, type Extraccion } from "@/lib/cuenta-cobro";
+import { consecutivoReenvio, generarDocx, leerFormato, revisarFormato, validar, type DatosPersona, type Extraccion } from "@/lib/cuenta-cobro";
+import { convertirDocxAPdf } from "@/lib/gotenberg";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 type Body = {
   datos: Extraccion; // lo que devolvió /api/cuenta-cobro (ya revisado por el usuario)
@@ -19,9 +21,11 @@ type Body = {
 export async function POST(req: Request) {
   try {
     await requireUser(req);
+    const pdf = new URL(req.url).searchParams.get("format") === "pdf";
+    if (pdf && !process.env.GOTENBERG_URL) throw new HttpError(503, "La conversión a PDF requiere configurar Gotenberg en el servidor.", "PDF_NO_CONFIGURADO");
     const body = (await req.json().catch(() => null)) as Body | null;
     const p = body?.persona;
-    if (!body?.datos?.filas?.length || !p?.nombre || !/^\d{5,12}$/.test(p.cedula ?? "") || !p.celular || !p.direccion || !p.ciudad)
+    if (!body?.datos?.filas?.length || !p?.nombre?.trim() || !/^\d{5,12}$/.test(p.cedula ?? "") || !p.celular || !p.direccion || !p.ciudad)
       throw new HttpError(400, "Faltan datos: nombre, cédula, celular, dirección o ciudad.");
     if (p.firma && (p.firma.base64.length > 700_000 || !(p.firma.anchoPx > 0) || !(p.firma.altoPx > 0)))
       throw new HttpError(413, "La firma es demasiado grande.");
@@ -38,14 +42,26 @@ export async function POST(req: Request) {
     } else {
       plantilla = await readFile(path.join(process.cwd(), "plantilla", "cuenta_cobro_base.docx"));
     }
+    // El consecutivo y el período del formato no se cambian: el formato tiene que ser del mismo mes.
+    const formato = await leerFormato(plantilla).catch(() => null);
+    if (!formato) throw new HttpError(415, "No se pudo leer el formato DOCX.", "FORMATO_INVALIDO");
+    const otroMes = revisarFormato(formato, body.datos.mes, body.datos.anio);
+    if (otroMes) throw new HttpError(422, otroMes, "FORMATO_OTRO_MES");
+    // Reenvío: el consecutivo es el del formato con A al final; no se escribe a mano.
+    const reenvio = p.reenvio ? consecutivoReenvio(formato) : null;
+    if (p.reenvio && !reenvio) throw new HttpError(422, "El formato no tiene consecutivo (N° AAAA-MM) para el reenvío.", "FORMATO_SIN_CONSECUTIVO");
+
     const firma = p.firma
       ? { data: Buffer.from(p.firma.base64, "base64"), tipo: p.firma.tipo, anchoPx: p.firma.anchoPx, altoPx: p.firma.altoPx }
       : undefined;
-    const docx = await generarDocx(plantilla, v, { ...p, firma });
-    return new NextResponse(Buffer.from(docx), {
+    const docx = await generarDocx(plantilla, v, { ...p, firma, reenvio: reenvio ? { consecutivo: reenvio } : undefined });
+    const nombreLimpio = p.nombre.replace(/[<>:"/\\|?*\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim();
+    const nombre = `Cuenta de cobro_${nombreLimpio}`;
+    const salida = pdf ? await convertirDocxAPdf(docx, nombre) : docx;
+    return new NextResponse(Buffer.from(salida), {
       headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`Cuenta de cobro_${p.nombre}.docx`)}`,
+        "Content-Type": pdf ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${nombre}.${pdf ? "pdf" : "docx"}`)}`,
         "Cache-Control": "no-store",
       },
     });
