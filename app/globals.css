@@ -83,8 +83,8 @@
 
 /*
  * Escenario del login (components/escenario.tsx + auth-card.tsx).
- * Línea de tiempo: 0,35 s el telón empieza a recogerse (2,8 s) → 3,0 s el foco enciende con un
- * micro-parpadeo → 3,4 s aparece el polvo en el haz (canvas). La tarjeta entra desde 1,0 s.
+ * Movimiento sobrio: el telón se desliza a los lados en un solo gesto (0,3 s → 2,7 s), el foco
+ * se enciende con un fundido y todo queda quieto; solo el polvo flota en el haz. Tarjeta desde 0,9 s.
  * Solo se animan transform y opacity. Con prefers-reduced-motion todo queda en su estado final.
  */
 .escenario {
@@ -122,9 +122,7 @@
   margin-left: -100vmax;
   mix-blend-mode: screen;
   opacity: 0;
-  animation:
-    foco-enciende 1s linear 3s forwards,
-    foco-respira 9s ease-in-out 4.2s infinite;
+  animation: aparece 1.8s ease-out 1.6s forwards;
 }
 .foco-ancho {
   background: conic-gradient(
@@ -160,7 +158,7 @@
   background: radial-gradient(closest-side, rgb(255 214 160 / 0.26), rgb(255 190 130 / 0.08) 60%, transparent);
   mix-blend-mode: screen;
   opacity: 0;
-  animation: foco-enciende 1s linear 3s forwards;
+  animation: aparece 1.8s ease-out 1.8s forwards;
 }
 .escena-polvo {
   position: absolute;
@@ -169,7 +167,7 @@
   height: 100%;
   mix-blend-mode: screen;
   opacity: 0;
-  animation: aparece 1.6s ease-out 3.4s forwards;
+  animation: aparece 2s ease-out 2.6s forwards;
 }
 
 /* ---------- Telón ---------- */
@@ -179,9 +177,9 @@
   bottom: 0;
   width: 50.5%;
   will-change: transform;
-  animation-duration: 2.8s;
-  animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
-  animation-delay: 0.35s;
+  animation-duration: 2.4s;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  animation-delay: 0.3s;
   animation-fill-mode: forwards;
 }
 .telon-hoja.izq {
@@ -215,15 +213,12 @@
       #4a0404 96px,
       #2a0202 104px
     );
-  transform-origin: 50% 0%;
-  animation: telon-mece 7s ease-in-out 3.4s infinite;
 }
 .telon-hoja.izq .telon-tela {
   box-shadow: inset -40px 0 50px -20px rgb(0 0 0 / 0.75);
 }
 .telon-hoja.der .telon-tela {
   box-shadow: inset 40px 0 50px -20px rgb(0 0 0 / 0.75);
-  animation-delay: 3.9s;
 }
 /* Textura de terciopelo. */
 .telon-tela::after,
@@ -272,7 +267,7 @@
   -webkit-backdrop-filter: blur(16px) saturate(120%);
   backdrop-filter: blur(16px) saturate(120%);
   opacity: 0;
-  animation: tarjeta-entra 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 1s forwards;
+  animation: tarjeta-entra 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.9s forwards;
 }
 /* Rebote de la luz del foco en el borde superior. */
 .escena-tarjeta::before {
@@ -284,7 +279,7 @@
   height: 1px;
   background: linear-gradient(90deg, transparent, rgb(255 226 180 / 0.85), transparent);
   opacity: 0;
-  animation: aparece 1.2s ease-out 3.2s forwards;
+  animation: aparece 1.4s ease-out 2.2s forwards;
 }
 .escena-tarjeta::after {
   content: "";
@@ -296,17 +291,17 @@
   pointer-events: none;
   background: radial-gradient(ellipse 50% 100% at 50% 0%, rgb(255 214 160 / 0.13), transparent);
   opacity: 0;
-  animation: aparece 1.2s ease-out 3.2s forwards;
+  animation: aparece 1.4s ease-out 2.2s forwards;
 }
 /* Entrada escalonada: título, texto y cada campo del formulario. */
 .escena-entra > *,
 .escena-tarjeta form > * {
   opacity: 0;
-  animation: escalon 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
-  animation-delay: calc(var(--base, 1.2s) + var(--n, 0) * 75ms);
+  animation: escalon 0.6s ease-out forwards;
+  animation-delay: calc(var(--base, 1.1s) + var(--n, 0) * 70ms);
 }
 .escena-tarjeta form {
-  --base: 1.55s;
+  --base: 1.4s;
 }
 .escena-entra > :nth-child(2),
 .escena-tarjeta form > :nth-child(2) { --n: 1; }
@@ -319,60 +314,15 @@
 .escena-tarjeta form > :nth-child(7) { --n: 6; }
 .escena-tarjeta form > :nth-child(n + 8) { --n: 7; }
 
+/* Quedan ~140 px de tela recogida a cada lado, con los pliegues sin deformar. */
 @keyframes telon-izq {
-  0% {
-    transform: translateX(0) scaleX(1) skewX(0deg);
-  }
-  35% {
-    transform: translateX(-7%) scaleX(0.8) skewX(-3deg);
-  }
-  72% {
-    transform: translateX(-1.5%) scaleX(0.34) skewX(1.4deg);
-  }
-  100% {
-    transform: translateX(0) scaleX(0.22) skewX(0deg);
+  to {
+    transform: translateX(calc(-100% + 140px));
   }
 }
 @keyframes telon-der {
-  0% {
-    transform: translateX(0) scaleX(1) skewX(0deg);
-  }
-  35% {
-    transform: translateX(7%) scaleX(0.8) skewX(3deg);
-  }
-  72% {
-    transform: translateX(1.5%) scaleX(0.34) skewX(-1.4deg);
-  }
-  100% {
-    transform: translateX(0) scaleX(0.22) skewX(0deg);
-  }
-}
-@keyframes telon-mece {
-  0%,
-  100% {
-    transform: skewX(0deg);
-  }
-  50% {
-    transform: skewX(0.7deg);
-  }
-}
-/* Encendido con micro-parpadeo, como un foco de teatro. */
-@keyframes foco-enciende {
-  0% { opacity: 0; }
-  8% { opacity: 0.7; }
-  14% { opacity: 0.12; }
-  24% { opacity: 0.85; }
-  31% { opacity: 0.45; }
-  48% { opacity: 1; }
-  100% { opacity: 1; }
-}
-@keyframes foco-respira {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.84;
+  to {
+    transform: translateX(calc(100% - 140px));
   }
 }
 @keyframes aparece {
@@ -383,7 +333,7 @@
 @keyframes tarjeta-entra {
   from {
     opacity: 0;
-    transform: translateY(18px) scale(0.985);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -393,7 +343,7 @@
 @keyframes escalon {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;

@@ -5,12 +5,12 @@ import { useEffect, useRef } from "react";
 /** Medio ángulo del haz (grados). Debe coincidir con los conic-gradient de .foco-* en globals.css. */
 const MEDIO_ANGULO = 17;
 /** El polvo aparece cuando el foco ya encendió (ms). */
-const INICIO_POLVO = 3400;
+const INICIO_POLVO = 2600;
 
 type Mota = { y: number; u: number; r: number; v: number; fase: number; a: number };
 
 /**
- * Polvo flotando dentro del haz del foco. Canvas ligero (≤ 70 motas), solo dibuja; no toca el DOM.
+ * Polvo flotando dentro del haz del foco. Canvas ligero (≤ 40 motas, lentas), solo dibuja; no toca el DOM.
  * Con prefers-reduced-motion no se anima. Se pausa solo cuando la pestaña no está visible (rAF).
  */
 function Polvo() {
@@ -28,7 +28,7 @@ function Polvo() {
       y: enCualquierAltura ? 40 + Math.random() * (h - 40) : h + Math.random() * 40,
       u: (Math.random() * 2 - 1) * 0.9,
       r: 0.5 + Math.random() * 1.3,
-      v: 6 + Math.random() * 14, // px por segundo, subiendo
+      v: 3 + Math.random() * 6, // px por segundo, subiendo despacio
       fase: Math.random() * Math.PI * 2,
       a: 0.25 + Math.random() * 0.55,
     });
@@ -40,7 +40,7 @@ function Polvo() {
       c.width = Math.round(w * dpr);
       c.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const n = Math.max(22, Math.min(70, Math.round((w * h) / 16000)));
+      const n = Math.max(16, Math.min(40, Math.round((w * h) / 26000)));
       motas = Array.from({ length: n }, () => nueva(true));
     };
 
@@ -52,8 +52,8 @@ function Polvo() {
       ctx.fillStyle = "rgb(255 232 196)";
       for (const m of motas) {
         m.y -= m.v * dt;
-        m.fase += dt * 0.6;
-        m.u += Math.sin(m.fase) * dt * 0.04;
+        m.fase += dt * 0.35;
+        m.u += Math.sin(m.fase) * dt * 0.02;
         if (m.y < 30 || Math.abs(m.u) > 1) Object.assign(m, nueva(false));
         const ancho = m.y * tan;
         const x = w / 2 + m.u * ancho;
