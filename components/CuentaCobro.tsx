@@ -93,6 +93,19 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
     }
   };
 
+  function seleccionarFormato(archivo: File | null, input: HTMLInputElement) {
+    setDocxGenerado(null);
+    if (archivo && (!archivo.name.toLowerCase().endsWith(".docx") || archivo.size > 2_000_000)) {
+      setFormato(null);
+      setErrorFormato("Elige un archivo .docx de hasta 2 MB.");
+      input.value = "";
+      return;
+    }
+    setFormato(archivo);
+    setErrorFormato("");
+    input.value = "";
+  }
+
   async function procesar() {
     setCargando("revisar");
     setError("");
@@ -228,6 +241,22 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
             <input type="file" accept="image/*" hidden onChange={async (e) => e.target.files?.[0] && setImagen(await comprimir(e.target.files[0]))} />
           </label>
         </div>
+        <label className="mt-4 flex min-h-[76px] cursor-pointer items-center justify-between gap-4 rounded-box border-[1.5px] border-dashed border-border bg-surface px-5 py-4 transition-colors duration-100 hover:border-fg/30">
+          <span className="min-w-0">
+            <span className="block font-semibold">Poner formato de cuenta de cobro</span>
+            <span className="mt-1 block truncate text-[12px] text-muted">
+              {formato ? `Formato seleccionado: ${formato.name}` : "Sube el DOCX que te entregaron · hasta 2 MB. Si no eliges uno, se usa el formato oficial incluido."}
+            </span>
+            {errorFormato && <span className="mt-1 block text-[12px] text-danger">{errorFormato}</span>}
+          </span>
+          <span className="shrink-0 rounded-ctl border border-border px-3 py-2 text-[12px] font-medium">Elegir formato</span>
+          <input
+            type="file"
+            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            className="sr-only"
+            onChange={(e) => seleccionarFormato(e.target.files?.[0] ?? null, e.currentTarget)}
+          />
+        </label>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
           <Field label="Persona" hint="Si el Excel trae varias personas, solo se toman tus filas." className="flex-1">
             {(id) => <Input id={id} value={persona} onChange={(e) => setPersona(e.target.value)} placeholder="Nombre o cédula" />}
@@ -408,33 +437,6 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
               <Field label="Dirección">{(id) => <Input id={id} autoComplete="street-address" value={datos.direccion} onChange={(e) => setDatos({ ...datos, direccion: e.target.value })} />}</Field>
               <Field label="Ciudad">{(id) => <Input id={id} value={datos.ciudad} onChange={(e) => setDatos({ ...datos, ciudad: e.target.value })} />}</Field>
             </div>
-
-            <Field label="Formato de cuenta de cobro" hint="Sube el DOCX oficial que te entregaron. Si no seleccionas uno, se usa el formato oficial incluido en la aplicación.">
-              {(id) => (
-                <div>
-                  <Input
-                    id={id}
-                    type="file"
-                    accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    className="file:mr-3 file:rounded-ctl file:border file:border-border file:bg-transparent file:px-3 file:py-1 file:text-fg"
-                    onChange={(e) => {
-                      const archivo = e.target.files?.[0] ?? null;
-                      setDocxGenerado(null);
-                      if (archivo && (!archivo.name.toLowerCase().endsWith(".docx") || archivo.size > 2_000_000)) {
-                        setFormato(null);
-                        setErrorFormato("Elige un archivo .docx de hasta 2 MB.");
-                        e.target.value = "";
-                        return;
-                      }
-                      setFormato(archivo);
-                      setErrorFormato("");
-                    }}
-                  />
-                  {formato && <p className="mt-1 text-[12px] text-muted">Formato seleccionado: {formato.name}</p>}
-                  {errorFormato && <p className="mt-1 text-[12px] text-danger">{errorFormato}</p>}
-                </div>
-              )}
-            </Field>
 
             <div className="mt-6 space-y-3 text-[13px]">
               <p className="eyebrow text-fg">Firma</p>
