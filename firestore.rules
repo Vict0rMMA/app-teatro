@@ -20,6 +20,14 @@ service cloud.firestore {
     function keepsOwner() {
       return request.resource.data.uid == resource.data.uid;
     }
+    // Permisos por sección (permisos/{uid}.secciones; los escribe solo el servidor).
+    // Sin documento = acceso completo (por defecto); con documento, solo las secciones marcadas.
+    function permisos() {
+      return /databases/$(database)/documents/permisos/$(request.auth.uid);
+    }
+    function tiene(seccion) {
+      return signedIn() && (!exists(permisos()) || seccion in get(permisos()).data.secciones);
+    }
     function isTime(v) {
       return v == null || (v is string && v.matches('^[0-2][0-9]:[0-5][0-9]$'));
     }
@@ -49,41 +57,44 @@ service cloud.firestore {
       allow create, update: if isOwner(uid) && validProfile(request.resource.data);
     }
 
-    // Permisos por sección: cada cuenta lee los suyos; solo el servidor los escribe.
     match /permisos/{uid} {
       allow read: if isOwner(uid);
       allow write: if false;
     }
 
     match /events/{eventId} {
-      allow read: if owns();
+      allow read: if owns() && tiene('planillas');
       // Crear y borrar lo hace el servidor (borra también el personal).
       allow create, update, delete: if false;
 
       match /staff/{staffId} {
-        allow read: if owns();
+        allow read: if owns() && tiene('planillas');
         allow write: if false;
       }
     }
 
     // Búsqueda de personal en todos los eventos (collectionGroup).
     match /{path=**}/staff/{staffId} {
-      allow read: if owns();
+      allow read: if owns() && tiene('planillas');
     }
 
+    // Mis horas. Cuenta de cobro las lee para compararlas; Ajustes, para saber si un lugar está en uso.
     match /workLogs/{id} {
-      allow read, delete: if owns();
-      allow create: if createsOwn() && validWorkLog(request.resource.data);
-      allow update: if owns() && keepsOwner() && validWorkLog(request.resource.data);
+      allow read: if owns() && (tiene('horas') || tiene('cobro') || tiene('ajustes'));
+      allow delete: if owns() && tiene('horas');
+      allow create: if createsOwn() && tiene('horas') && validWorkLog(request.resource.data);
+      allow update: if owns() && keepsOwner() && tiene('horas') && validWorkLog(request.resource.data);
     }
 
+    // Lugares de trabajo. Crear se permite siempre al dueño: el registro los crea antes de tener permisos.
     match /workPlaces/{id} {
-      allow read, delete: if owns();
+      allow read: if owns() && (tiene('horas') || tiene('planillas') || tiene('ajustes'));
+      allow delete: if owns() && (tiene('horas') || tiene('ajustes'));
       allow create: if createsOwn()
         && request.resource.data.nombre is string
         && request.resource.data.nombre.size() > 0
         && request.resource.data.nombre.size() <= 60;
-      allow update: if owns() && keepsOwner()
+      allow update: if owns() && keepsOwner() && (tiene('horas') || tiene('ajustes'))
         && request.resource.data.nombre is string
         && request.resource.data.nombre.size() > 0
         && request.resource.data.nombre.size() <= 60;

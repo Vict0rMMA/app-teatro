@@ -4,7 +4,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { watchPermisos } from "@/lib/data";
-import { cuentaAnterior, esAdminEmail, rutaInicial, seccionDeRuta, TODAS, type Seccion } from "@/lib/permisos";
+import { esAdminEmail, rutaInicial, seccionDeRuta, TODAS, type Seccion } from "@/lib/permisos";
 import { useSession } from "./auth-provider";
 
 type Permisos = { secciones: Seccion[]; esAdmin: boolean; puede: (s: Seccion) => boolean };
@@ -33,8 +33,8 @@ export function GuardaPermisos({ children }: { children: ReactNode }) {
     return watchPermisos(user.uid, setSecciones, () => setSecciones(null));
   }, [user.uid, esAdmin]);
 
-  // Sin documento y cuenta anterior a los permisos: acceso completo (no pierde lo que ya usaba).
-  const efectivas = esAdmin ? TODAS : secciones === null && cuentaAnterior(user.metadata.creationTime) ? TODAS : secciones;
+  // Sin permisos guardados = acceso completo (por defecto). El administrador quita secciones después.
+  const efectivas = esAdmin || secciones === null ? TODAS : secciones;
   const seccion = seccionDeRuta(pathname);
   const permitido = !!efectivas && (seccion === null ? pathname !== "/admin" || esAdmin : efectivas.includes(seccion));
 
@@ -46,7 +46,7 @@ export function GuardaPermisos({ children }: { children: ReactNode }) {
   }, [efectivas, permitido, pathname, router]);
 
   if (efectivas === undefined) return <Cargando />;
-  if (!efectivas || !efectivas.length) return <Pendiente sinSecciones={!!efectivas} />;
+  if (!efectivas.length) return <Pendiente />;
   if (!permitido) return <Cargando />;
 
   return <Ctx.Provider value={{ secciones: efectivas, esAdmin, puede: (s) => efectivas.includes(s) }}>{children}</Ctx.Provider>;
@@ -62,7 +62,8 @@ function Cargando() {
   );
 }
 
-function Pendiente({ sinSecciones }: { sinSecciones: boolean }) {
+/** Solo si el administrador le quitó todas las secciones. */
+function Pendiente() {
   const { profile, signOut } = useSession();
   return (
     <main className="grid min-h-dvh place-items-center bg-bg px-6">
@@ -75,7 +76,7 @@ function Pendiente({ sinSecciones }: { sinSecciones: boolean }) {
           className="h-10 w-auto dark:rounded-ctl dark:bg-white dark:px-2 dark:py-1.5"
         />
         <h1 className="mt-8 text-2xl font-bold tracking-tight">
-          {sinSecciones ? "Tu cuenta no tiene secciones habilitadas" : "Tu cuenta está pendiente de aprobación"}
+          Tu cuenta no tiene secciones habilitadas
         </h1>
         <p className="mt-2 text-sm text-muted">
           Hola{profile.nombre ? `, ${profile.nombre.split(" ")[0]}` : ""}. El administrador debe habilitarte las secciones que vas a usar. Esta

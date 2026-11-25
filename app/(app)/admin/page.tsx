@@ -175,7 +175,8 @@ export default function AdminPage() {
     }
   }
 
-  const pendientes = (users ?? []).filter((u) => !u.esAdmin && u.uid !== user.uid && (u.secciones === null || u.secciones === undefined)).length;
+  // Cuentas a las que se les quitaron todas las secciones (no pueden usar nada).
+  const pendientes = (users ?? []).filter((u) => !u.esAdmin && u.uid !== user.uid && Array.isArray(u.secciones) && u.secciones.length === 0).length;
 
   const contexto = users
     ? `${users.length} ${users.length === 1 ? "cuenta" : "cuentas"} · ${activos} ${activos === 1 ? "activa" : "activas"} en los últimos 10 min${actualizado ? ` · actualizado ${hace(new Date(actualizado).toISOString(), ahora).toLowerCase()}` : ""}`
@@ -215,7 +216,7 @@ export default function AdminPage() {
                 value={resumen.cuentas}
                 sub={
                   pendientes
-                    ? `${pendientes} pendiente${pendientes === 1 ? "" : "s"} de permisos`
+                    ? `${pendientes} sin secciones`
                     : resumen.desactivadas
                       ? `${resumen.desactivadas} desactivada${resumen.desactivadas === 1 ? "" : "s"}`
                       : "todas activas"
@@ -228,8 +229,8 @@ export default function AdminPage() {
           )}
           {pendientes > 0 && (
             <p className="mb-4 border-l-2 border-warn py-1 pl-4 text-[13px]">
-              <span className="font-medium">{pendientes === 1 ? "1 cuenta espera" : `${pendientes} cuentas esperan`} permisos.</span>{" "}
-              <span className="text-muted">Marca las secciones que puede usar; hasta entonces ve la pantalla de &quot;pendiente&quot;.</span>
+              <span className="font-medium">{pendientes === 1 ? "1 cuenta no tiene" : `${pendientes} cuentas no tienen`} ninguna sección.</span>{" "}
+              <span className="text-muted">No pueden usar la app hasta que les marques al menos una.</span>
             </p>
           )}
           {error && <p className="mb-3 text-xs text-warn">No se pudo actualizar: {error} Se reintenta solo.</p>}
@@ -352,13 +353,14 @@ function Permisos({
   if (account.esAdmin || propia) {
     return <p className="mt-2 text-xs text-muted">Acceso completo (administradora)</p>;
   }
-  const actuales = account.secciones ?? [];
-  const pendiente = account.secciones === null || account.secciones === undefined;
+  // Sin permisos guardados = todo (por defecto).
+  const actuales = account.secciones ?? TODAS;
+  const pendiente = actuales.length === 0;
   const alternar = (s: Seccion) => onCambiar(TODAS.filter((x) => (x === s ? !actuales.includes(s) : actuales.includes(x))));
   return (
     <div className="mt-2.5">
       <div className="flex flex-wrap items-center gap-1.5">
-        {pendiente && <span className="mr-1 text-[12px] font-medium text-warn">● Pendiente</span>}
+        {pendiente && <span className="mr-1 text-[12px] font-medium text-warn">● Sin secciones</span>}
         {SECCIONES.map((s) => {
           const on = actuales.includes(s.id);
           return (

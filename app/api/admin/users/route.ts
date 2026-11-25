@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { HttpError, handleError, requireAdmin, requireUser } from "@/lib/api";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { cuentaAnterior, esAdminEmail, sanearSecciones, TODAS } from "@/lib/permisos";
+import { esAdminEmail, sanearSecciones, TODAS } from "@/lib/permisos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,20 +27,18 @@ export async function GET(req: Request) {
     const permisos = result.users.length
       ? await adminDb().getAll(...result.users.map((account) => adminDb().collection("permisos").doc(account.uid)))
       : [];
-    // Se guarda acceso completo para la administradora y para las cuentas anteriores a los permisos que
-    // aún no tienen documento (así las reglas de Firestore las reconocen). Las nuevas quedan pendientes.
+    // La administradora siempre con acceso completo guardado.
     const completas = new Set<string>();
     await Promise.all(
       result.users.map((account, i) => {
         const esAdmin = esAdminEmail(account.email, process.env.ADMIN_EMAIL);
-        const anteriorSinPermisos = !permisos[i]?.exists && cuentaAnterior(account.metadata.creationTime);
-        if (!esAdmin && !anteriorSinPermisos) return null;
+        if (!esAdmin) return null;
         if (esAdmin && sanearSecciones(permisos[i]?.data()?.secciones).length === TODAS.length) return null;
         completas.add(account.uid);
         return adminDb()
           .collection("permisos")
           .doc(account.uid)
-          .set({ secciones: TODAS, actualizadoEn: FieldValue.serverTimestamp(), actualizadoPor: esAdmin ? "administradora" : "cuenta-anterior" }, { merge: true });
+          .set({ secciones: TODAS, actualizadoEn: FieldValue.serverTimestamp(), actualizadoPor: "administradora" }, { merge: true });
       }),
     );
 
@@ -69,13 +67,11 @@ export async function GET(req: Request) {
         tieneFirma: !!perfil?.firma,
         activo7d: !!actividad && ahora - new Date(actividad).getTime() < 7 * DIA,
         esAdmin: esAdminEmail(account.email, process.env.ADMIN_EMAIL),
-        // null = pendiente (aún sin permisos asignados).
+        // Sin permisos guardados = acceso completo (por defecto).
         secciones:
-          esAdminEmail(account.email, process.env.ADMIN_EMAIL) || completas.has(account.uid)
+          esAdminEmail(account.email, process.env.ADMIN_EMAIL) || completas.has(account.uid) || !permisos[index]?.exists
             ? TODAS
-            : permisos[index]?.exists
-              ? sanearSecciones(permisos[index]!.data()?.secciones)
-              : null,
+            : sanearSecciones(permisos[index]!.data()?.secciones),
       };
     });
 
@@ -87,7 +83,7 @@ export async function GET(req: Request) {
           cuentas: users.length,
           activas7d: users.filter((u) => u.activo7d).length,
           desactivadas: users.filter((u) => u.deshabilitado).length,
-          pendientes: users.filter((u) => u.secciones === null).length,
+          pendientes: users.filter((u) => u.secciones.length === 0).length,
           planillasMes,
         },
       },

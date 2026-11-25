@@ -1,8 +1,8 @@
 /**
  * Permisos por cuenta: qué secciones puede ver y usar cada persona.
  * Se guardan en Firestore en permisos/{uid} = { secciones: Seccion[] }. Solo el servidor (firebase-admin)
- * escribe ahí; cada persona puede leer el suyo. Sin documento = cuenta pendiente (no ve nada).
- * La cuenta administradora (ADMIN_EMAIL) siempre tiene acceso completo.
+ * escribe ahí; cada persona puede leer el suyo. Sin documento = acceso completo (por defecto, quien entra
+ * puede usar todo; el administrador quita secciones después). La administradora siempre tiene todo.
  */
 
 export type Seccion = "planillas" | "horas" | "cobro" | "ajustes";
