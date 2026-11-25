@@ -17,8 +17,10 @@ export default function CuentaCobroPage() {
 
   const dia = new Date().getDate();
   const contexto =
-    dia <= 25
-      ? `Se reciben hasta el día 25: te ${25 - dia === 1 ? "queda 1 día" : `quedan ${25 - dia} días`} este mes.`
+    dia === 25
+      ? "Hoy es el último día para enviarla (se reciben hasta el 25)."
+      : dia < 25
+        ? `Se reciben hasta el día 25: te ${25 - dia === 1 ? "queda 1 día" : `quedan ${25 - dia} días`} este mes.`
       : "El plazo de este mes cerró el día 25. La próxima va hasta el 25 del mes que viene.";
 
   return (

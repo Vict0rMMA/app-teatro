@@ -8,7 +8,7 @@ import { useToast } from "@/components/toast";
 import { Badge, Button, Card, Field, Input, Modal, Notice, Spinner, Textarea, cx } from "@/components/ui";
 import { borrarBorrador, guardarBorrador, leerBorrador } from "@/lib/borrador";
 import { esLaPersona } from "@/lib/consolidado-texto";
-import { validar, type Extraccion, type Fila, type Validacion } from "@/lib/cuenta-cobro";
+import { leerFormato, validar, type DatosFormato, type Extraccion, type Fila, type Validacion } from "@/lib/cuenta-cobro";
 import { apiFetch } from "@/lib/firebase/client";
 import { comparar, type Comparacion, type RegistroPersonal } from "@/lib/registros";
 
@@ -69,6 +69,9 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
   const [error, setError] = useState("");
   const [res, setRes] = useState<Respuesta | null>(null);
   const [formato, setFormato] = useState<File | null>(null);
+  const [infoFormato, setInfoFormato] = useState<DatosFormato | null>(null);
+  // Pegar celdas (sin IA) es lo recomendado; la foto la lee Gemini.
+  const [modo, setModo] = useState<"celdas" | "foto">("celdas");
   const [errorFormato, setErrorFormato] = useState("");
   const [datos, setDatos] = useState({ celular: "", direccion: "", ciudad: "Medellín - Antioquia" });
   const [usarFirmaPerfil, setUsarFirmaPerfil] = useState(!!profile.firma);
@@ -107,6 +110,7 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
       if (b && (b.texto || b.imagen || b.res)) {
         setTexto(b.texto);
         setImagen(b.imagen);
+        if (b.imagen && !b.texto) setModo("foto");
         setPersona(b.persona);
         setRes(b.res);
         setFormato(b.formato);
@@ -144,6 +148,7 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
     const item = [...e.clipboardData.items].find((i) => i.type.startsWith("image/"));
     if (item) {
       e.preventDefault();
+      setModo("foto");
       setPreparandoImagen(true);
       try {
         setImagen(await comprimir(item.getAsFile()!));
@@ -167,6 +172,21 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
     setErrorFormato("");
     input.value = "";
   }
+
+  // Muestra de qué mes es el formato elegido (consecutivo y período), para ver de una vez si es el correcto.
+  useEffect(() => {
+    let vivo = true;
+    setInfoFormato(null);
+    if (!formato) return;
+    formato
+      .arrayBuffer()
+      .then((b) => leerFormato(b))
+      .then((f) => vivo && setInfoFormato(f))
+      .catch(() => vivo && setErrorFormato("No se pudo leer ese DOCX. ¿Es el formato de la cuenta de cobro?"));
+    return () => {
+      vivo = false;
+    };
+  }, [formato]);
 
   function cambiarFila(indice: number, campo: keyof Fila, valor: string) {
     setRes((actual) => {
@@ -231,8 +251,8 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          texto: texto || undefined,
-          imagen: imagen ? { base64: imagen.base64, mediaType: imagen.mediaType } : undefined,
+          texto: modo === "celdas" ? texto || undefined : undefined,
+          imagen: modo === "foto" && imagen ? { base64: imagen.base64, mediaType: imagen.mediaType } : undefined,
           persona: persona.trim() || undefined,
           registros: registros ?? [],
         }),
@@ -331,95 +351,181 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
   return (
     <div>
       {/* 1 · Consolidado */}
-      <section className="pb-10">
-        <h2 className="font-bold tracking-tight text-[22px]">Consolidado</h2>
-        <p className="mt-1 max-w-prose text-[13px] text-muted">
-          Pega las filas del Excel o una captura (Ctrl+V), o sube una foto. La cuenta se arma solo con esto.
-        </p>
-        <div className="mt-5 grid gap-4 md:grid-cols-2" onPaste={onPaste}>
-          <Textarea
-            className="min-h-[200px] font-mono text-xs leading-relaxed"
-            placeholder="Pega aquí las filas del Excel…"
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            aria-label="Texto del consolidado"
-          />
-          <label
-            className={cx(
-              "flex min-h-[200px] cursor-pointer flex-col justify-between rounded-box border-[1.5px] border-dashed p-5 transition-colors duration-100",
-              imagen ? "border-border bg-surface" : "border-border bg-surface hover:border-fg/30",
-            )}
-          >
-            {imagen ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={imagen.preview} alt="Captura del consolidado" className="max-h-56 w-full object-contain" />
-            ) : (
-              <p className="font-bold tracking-tight text-xl leading-snug">Pega una captura o elige una foto del Excel</p>
-            )}
-            <span className="mt-4 flex items-center justify-between text-[12px] uppercase tracking-[0.06em] text-muted">
-              <span>.png · .jpg · .webp</span>
-              {imagen && (
-                <button
-                  type="button"
-                  className="normal-case tracking-normal text-brand underline underline-offset-2"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setImagen(null);
-                  }}
-                >
-                  Quitar
-                </button>
-              )}
-            </span>
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              hidden
-              onChange={async (e) => {
-                const input = e.currentTarget;
-                const archivo = e.target.files?.[0];
-                if (!archivo) return;
-                setPreparandoImagen(true);
-                try {
-                  setImagen(await comprimir(archivo));
-                  setError("");
-                } catch {
-                  setError("No se pudo abrir esa imagen. Prueba con otra foto o pega las filas del Excel.");
-                } finally {
-                  setPreparandoImagen(false);
-                  input.value = "";
-                }
-              }}
-            />
-          </label>
+      <section className="pb-10" onPaste={onPaste}>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-[22px] font-bold tracking-tight">Consolidado</h2>
+            <p className="mt-1 max-w-prose text-[13px] text-muted">La cuenta se arma solo con lo que pongas aquí.</p>
+          </div>
+          {/* Pestañas: pegar celdas (recomendado) o foto */}
+          <div role="tablist" aria-label="Cómo traer el consolidado" className="inline-flex rounded-ctl border border-border bg-surface p-1 text-[13px]">
+            {(
+              [
+                ["celdas", "Pegar celdas"],
+                ["foto", "Foto o captura"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={modo === id}
+                onClick={() => setModo(id)}
+                className={cx(
+                  "h-8 rounded-[5px] px-3 font-medium transition-colors duration-100",
+                  modo === id ? "bg-brand text-brand-fg" : "text-muted hover:text-fg",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-        <label className="mt-4 flex min-h-[76px] cursor-pointer items-center justify-between gap-4 rounded-box border-[1.5px] border-dashed border-border bg-surface px-5 py-4 transition-colors duration-100 hover:border-fg/30">
-          <span className="min-w-0">
-            <span className="block font-semibold">Poner formato de cuenta de cobro</span>
-            <span className="mt-1 block truncate text-[12px] text-muted">
-              {formato ? `Formato seleccionado: ${formato.name}` : "Sube el DOCX que te entregaron · hasta 2 MB. Si no eliges uno, se usa el formato oficial incluido."}
-            </span>
-            {errorFormato && <span className="mt-1 block text-[12px] text-danger">{errorFormato}</span>}
-          </span>
-          <span className="shrink-0 rounded-ctl border border-border px-3 py-2 text-[12px] font-medium">Elegir formato</span>
-          <input
-            type="file"
-            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            className="sr-only"
-            onChange={(e) => seleccionarFormato(e.target.files?.[0] ?? null, e.currentTarget)}
-          />
-        </label>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+
+        <Card className="mt-5 overflow-hidden">
+          {modo === "celdas" ? (
+            <div className="grid md:grid-cols-[minmax(0,1fr)_240px]">
+              <Textarea
+                className="min-h-[230px] rounded-none border-0 bg-transparent font-mono text-xs leading-relaxed focus:ring-0"
+                placeholder={"Pega aquí las filas del Excel (Ctrl+V)…\n\nNOMBRE  CÉDULA  FACULTAD  FECHA  EVENTO  …"}
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                aria-label="Celdas del consolidado"
+              />
+              <div className="border-t border-border bg-subtle/40 p-5 text-[13px] md:border-l md:border-t-0">
+                <p className="flex items-center gap-2 font-bold">
+                  Recomendado <Badge tone="ok">sin IA · al instante</Badge>
+                </p>
+                <ol className="mt-3 space-y-2 text-muted">
+                  <li>
+                    <span className="font-medium text-fg">1.</span> En el Excel, selecciona tus filas (con el encabezado si puedes).
+                  </li>
+                  <li>
+                    <span className="font-medium text-fg">2.</span> Copia con <kbd className="rounded border border-border px-1 font-mono text-[11px]">Ctrl+C</kbd>.
+                  </li>
+                  <li>
+                    <span className="font-medium text-fg">3.</span> Pega aquí con <kbd className="rounded border border-border px-1 font-mono text-[11px]">Ctrl+V</kbd>.
+                  </li>
+                </ol>
+                <p className="mt-3 text-[12px] text-muted">Si incluyes la fila de TOTAL, la app comprueba que la suma cuadre.</p>
+                {texto.trim() && (
+                  <p className="mt-3 text-[12px] font-medium text-ok">
+                    ● {texto.trim().split(/\r?\n/).filter((l) => l.trim()).length} filas pegadas
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <label className="flex min-h-[230px] cursor-pointer flex-col items-center justify-center gap-3 p-6 text-center transition-colors duration-100 hover:bg-subtle/40">
+              {imagen ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagen.preview} alt="Captura del consolidado" className="max-h-52 w-full object-contain" />
+                  <span className="flex items-center gap-3 text-[13px]">
+                    <span className="text-muted">Lista para revisar</span>
+                    <button
+                      type="button"
+                      className="font-medium text-brand underline underline-offset-2"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setImagen(null);
+                      }}
+                    >
+                      Quitar
+                    </button>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-bold tracking-tight">Pega una captura (Ctrl+V) o elige una foto</p>
+                  <p className="max-w-sm text-[13px] text-muted">La lee Gemini. Una foto borrosa puede confundir números: revisa la tabla antes de generar.</p>
+                  <span className="mt-1 inline-flex h-9 items-center rounded-ctl border border-border px-3 text-[13px] font-medium">Elegir imagen</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                hidden
+                onChange={async (e) => {
+                  const input = e.currentTarget;
+                  const archivo = e.target.files?.[0];
+                  if (!archivo) return;
+                  setPreparandoImagen(true);
+                  try {
+                    setImagen(await comprimir(archivo));
+                    setError("");
+                  } catch {
+                    setError("No se pudo abrir esa imagen. Prueba con otra foto o pega las filas del Excel.");
+                  } finally {
+                    setPreparandoImagen(false);
+                    input.value = "";
+                  }
+                }}
+              />
+            </label>
+          )}
+        </Card>
+
+        {/* Formato del mes */}
+        <div className="mt-4 flex flex-col gap-3 rounded-box border border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 text-[13px]">
+            <p className="font-bold">Formato de la cuenta</p>
+            {formato ? (
+              <p className="mt-0.5 truncate text-muted">
+                {formato.name}
+                {infoFormato?.consecutivo && (
+                  <span className="text-fg">
+                    {" "}
+                    · N° {infoFormato.consecutivo}
+                    {infoFormato.mes ? ` · ${MESES[infoFormato.mes - 1].charAt(0).toUpperCase()}${MESES[infoFormato.mes - 1].slice(1)} ${infoFormato.anio}` : ""}
+                  </span>
+                )}
+              </p>
+            ) : (
+              <p className="mt-0.5 text-muted">Sube el DOCX del mes que te enviaron. Si no, se usa el incluido (octubre 2026).</p>
+            )}
+            {errorFormato && <p className="mt-1 text-[12px] text-danger">{errorFormato}</p>}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {formato && (
+              <button type="button" onClick={() => setFormato(null)} className="text-[13px] text-muted underline-offset-2 hover:text-fg hover:underline">
+                Usar el incluido
+              </button>
+            )}
+            <label className="inline-flex h-9 cursor-pointer items-center rounded-ctl border border-border px-3 text-[13px] font-medium transition-colors duration-100 hover:border-fg/30 hover:bg-surface">
+              {formato ? "Cambiar" : "Subir formato"}
+              <input
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="sr-only"
+                onChange={(e) => seleccionarFormato(e.target.files?.[0] ?? null, e.currentTarget)}
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Persona y botón */}
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end">
           <Field label="Persona" hint="Si el Excel trae varias personas, solo se toman tus filas." className="flex-1">
             {(id) => <Input id={id} value={persona} onChange={(e) => setPersona(e.target.value)} placeholder="Nombre o cédula" />}
           </Field>
-          <Button variant="primary" size="lg" loading={cargando === "revisar"} disabled={!!cargando || preparandoImagen || (!texto.trim() && !imagen)} onClick={procesar} className="sm:mb-[22px]">
+          <Button
+            variant="primary"
+            size="lg"
+            loading={cargando === "revisar"}
+            disabled={!!cargando || preparandoImagen || (modo === "celdas" ? !texto.trim() : !imagen)}
+            onClick={procesar}
+            className="sm:mb-[22px] sm:min-w-[200px]"
+          >
             {cargando === "revisar" ? "Leyendo…" : "Revisar consolidado"}
           </Button>
         </div>
         {preparandoImagen && <p className="mt-3 text-[13px] text-muted">Preparando la foto…</p>}
-        {cargando === "revisar" && <p className="mt-3 flex items-center gap-2 text-[13px] text-muted"><Spinner className="h-3.5 w-3.5" /> Puede tardar hasta un minuto.</p>}
+        {cargando === "revisar" && modo === "foto" && (
+          <p className="mt-3 flex items-center gap-2 text-[13px] text-muted">
+            <Spinner className="h-3.5 w-3.5" /> Leyendo la imagen con Gemini; puede tardar hasta un minuto.
+          </p>
+        )}
         {error && !res && (
           <Notice tone="danger" className="mt-4">
             {error}
