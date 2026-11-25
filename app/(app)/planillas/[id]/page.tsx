@@ -124,7 +124,7 @@ export default function PlanillaPage() {
 
   async function copiarYAbrirGrupo() {
     // Se abre primero (en el mismo gesto del clic) para que el navegador no lo bloquee.
-    window.open(grupo, "_blank", "noopener");
+    window.open(enlaceGrupo(grupo), "_blank", "noopener");
     await copiarTexto(mensaje);
     setEditando(false);
     toast.success("Mensaje copiado", "En el grupo, pega con Ctrl+V o mantén presionado → Pegar.");
@@ -436,7 +436,7 @@ export default function PlanillaPage() {
                   {copied ? "Copiado" : "Copiar"}
                 </Button>
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(mensaje)}`}
+                  href={enlaceTexto(mensaje)}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-ctl border border-border text-sm font-medium transition-colors duration-100 hover:border-fg/30 hover:bg-surface sm:h-9"
@@ -535,4 +535,22 @@ function Miniatura({ grande, onClick, label }: { grande?: boolean; onClick: () =
       </span>
     </button>
   );
+}
+
+/** Celular → app de WhatsApp. Computador → WhatsApp Web (sin la app instalada, los enlaces normales no abren nada). */
+function esCelular() {
+  return typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
+/** Abre el grupo: en el computador por WhatsApp Web con el código de la invitación. */
+function enlaceGrupo(invitacion: string) {
+  const codigo = /chat\.whatsapp\.com\/([A-Za-z0-9]+)/.exec(invitacion)?.[1];
+  if (!codigo || esCelular()) return invitacion;
+  return `https://web.whatsapp.com/accept?code=${codigo}`;
+}
+
+/** Abre WhatsApp con el mensaje ya escrito para elegir el chat. */
+function enlaceTexto(texto: string) {
+  const t = encodeURIComponent(texto);
+  return esCelular() ? `https://wa.me/?text=${t}` : `https://web.whatsapp.com/send?text=${t}`;
 }
