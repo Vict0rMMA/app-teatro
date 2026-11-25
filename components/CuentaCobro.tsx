@@ -147,6 +147,12 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
     setReenvio({ activo: false });
     setEditando(false);
     setError("");
+    setVerTexto(false);
+    setVista(null);
+    setModo("celdas");
+    setPersona(profile.nombre);
+    void borrarBorrador(claveBorrador);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   const onPaste = async (e: ClipboardEvent) => {
@@ -958,6 +964,11 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
               <li>Adjunta primero la cuenta y luego el RUT actualizado. Envía una sola vez y antes del día 25.</li>
             </ol>
           </section>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
+            <p className="text-[13px] text-muted">¿Terminaste esta? Puedes armar otra desde cero.</p>
+            <Button onClick={empezarDeNuevo}>Hacer otra cuenta</Button>
+          </div>
         </>
       )}
     </div>
