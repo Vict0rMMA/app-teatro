@@ -487,31 +487,20 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
                 )}
               </div>
               <div className="border-t border-border bg-subtle/40 p-5 text-[13px] md:border-l md:border-t-0">
-                <p className="font-bold">Cómo pegarlo</p>
-                <p className="mt-0.5 flex items-center gap-1.5 text-[12px] font-medium text-ok">
-                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
-                  Recomendado · al instante
-                </p>
-                <ol className="mt-4 space-y-3">
-                  {[
-                    <>En el Excel, selecciona tus filas, con el encabezado si puedes.</>,
-                    <>
-                      Copia con <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[11px]">Ctrl+C</kbd>
-                    </>,
-                    <>
-                      Pégalas aquí con <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[11px]">Ctrl+V</kbd>
-                    </>,
-                  ].map((paso, i) => (
-                    <li key={i} className="flex gap-3">
-                      <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand text-[11px] font-bold text-brand-fg">
-                        {i + 1}
-                      </span>
-                      <span className="text-muted">{paso}</span>
-                    </li>
-                  ))}
+                <p className="eyebrow">Cómo pegarlo</p>
+                <ol className="mt-3 space-y-2.5 text-muted">
+                  <li>
+                    <span className="tabular mr-2 text-fg">1.</span>En el Excel, selecciona tus filas (mejor con el encabezado).
+                  </li>
+                  <li>
+                    <span className="tabular mr-2 text-fg">2.</span>Cópialas con <span className="font-medium text-fg">Ctrl + C</span>.
+                  </li>
+                  <li>
+                    <span className="tabular mr-2 text-fg">3.</span>Pégalas en el cuadro con <span className="font-medium text-fg">Ctrl + V</span>.
+                  </li>
                 </ol>
-                <p className="mt-4 border-t border-border pt-3 text-[12px] text-muted">
-                  Tip: si incluyes la fila de <span className="font-medium text-fg">TOTAL</span>, la app comprueba que la suma cuadre.
+                <p className="mt-5 text-[12px] leading-relaxed text-muted">
+                  Si copias también la fila de TOTAL, se revisa que la suma cuadre.
                 </p>
               </div>
             </div>
