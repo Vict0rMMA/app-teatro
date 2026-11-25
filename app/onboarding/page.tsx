@@ -26,8 +26,9 @@ function Onboarding() {
     setError(null);
     setSaving(true);
     try {
-      await createProfile(user.uid, nombre, firma);
-      toast.success("Listo", "Ya puedes generar tus planillas.");
+      const r = await createProfile(user.uid, nombre, firma);
+      if (r === "ya-existia") toast.info("Ya tenías perfil", "Entraste con tus datos de siempre; no se cambió nada.");
+      else toast.success("Listo", "Ya puedes generar tus planillas.");
     } catch {
       toast.error("No se pudo guardar", "Revisa tu conexión e intenta de nuevo.");
       setSaving(false);

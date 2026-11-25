@@ -40,15 +40,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Si leer el perfil falla (red, token renovándose), se reintenta: nunca se asume "sin perfil",
+  // porque eso mandaba a cuentas existentes a la pantalla de registro.
+  const [intento, setIntento] = useState(0);
   useEffect(() => {
     if (!user) return;
     setProfile(undefined);
-    return watchProfile(
-      user.uid,
-      setProfile,
-      () => setProfile(null),
-    );
-  }, [user]);
+    let t: number | undefined;
+    const off = watchProfile(user.uid, setProfile, () => {
+      t = window.setTimeout(() => setIntento((n) => n + 1), Math.min(1000 * 2 ** intento, 15000));
+    });
+    return () => {
+      off();
+      if (t) window.clearTimeout(t);
+    };
+  }, [user, intento]);
 
   const signOut = useCallback(async () => {
     await fbSignOut(firebaseAuth());

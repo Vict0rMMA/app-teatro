@@ -4,6 +4,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocFromServer,
   getDocs,
   limit,
   onSnapshot,
@@ -110,15 +111,25 @@ export function watchPermisos(uid: string, cb: (secciones: Seccion[] | null) => 
 // ---------- Perfil ----------
 
 export function watchProfile(uid: string, cb: (p: Profile | null) => void, onError?: (e: Error) => void) {
+  // "No existe" solo se cree si lo confirma el servidor: la caché local puede no tener el perfil aún
+  // (equipo nuevo, caché borrada, red lenta) y eso mandaba a cuentas existentes a "Configura tu perfil".
   return onSnapshot(
     doc(db(), "users", uid),
-    (s) => cb(s.exists() ? (s.data() as Profile) : null),
+    { includeMetadataChanges: true },
+    (s) => {
+      if (s.exists()) cb(s.data() as Profile);
+      else if (!s.metadata.fromCache) cb(null);
+    },
     (e) => onError?.(e),
   );
 }
 
-/** Crea el perfil y los lugares de trabajo iniciales (primer ingreso). */
-export async function createProfile(uid: string, nombre: string, firma: string | null) {
+/**
+ * Crea el perfil y los lugares de trabajo iniciales (primer ingreso). Si el perfil ya existe en el
+ * servidor no toca nada (nunca pisa nombre, firma ni ajustes de una cuenta existente).
+ */
+export async function createProfile(uid: string, nombre: string, firma: string | null): Promise<"creado" | "ya-existia"> {
+  if ((await getDocFromServer(doc(db(), "users", uid))).exists()) return "ya-existia";
   const batch = writeBatch(db());
   batch.set(doc(db(), "users", uid), {
     nombre: nombre.trim(),
@@ -139,6 +150,7 @@ export async function createProfile(uid: string, nombre: string, firma: string |
     });
   }
   await batch.commit();
+  return "creado";
 }
 
 export function updateProfile(uid: string, data: Partial<Profile>) {
