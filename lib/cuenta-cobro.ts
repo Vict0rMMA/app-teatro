@@ -269,8 +269,24 @@ function transformarParrafo(x: string, coincide: (texto: string) => boolean, tra
   return actualizado;
 }
 
+/**
+ * La plantilla deja el borde superior e izquierdo de muchas celdas en "nil" y confía en el de la
+ * celda vecina. Word lo dibuja, pero LibreOffice y otros convertidores a PDF no: faltan líneas.
+ * Se completa cada lado vacío con el mismo trazo que la celda ya usa abajo y a la derecha.
+ */
+function completarBordes(fila: string): string {
+  return fila.replace(/<w:tcBorders>([\s\S]*?)<\/w:tcBorders>/g, (todo, lados: string) => {
+    const abajo = /<w:bottom (w:val="(?!nil|none)[^"]*"[^>]*)\/>/.exec(lados)?.[1];
+    const derecha = /<w:right (w:val="(?!nil|none)[^"]*"[^>]*)\/>/.exec(lados)?.[1];
+    let r = lados;
+    if (abajo) r = r.replace(/<w:top w:val="(nil|none)"\/>/, `<w:top ${abajo}/>`);
+    if (derecha) r = r.replace(/<w:left w:val="(nil|none)"\/>/, `<w:left ${derecha}/>`);
+    return `<w:tcBorders>${r}</w:tcBorders>`;
+  });
+}
+
 function llenarFila(fila: string, valores: string[]): string {
-  let r = fila.replace(/ w14:(paraId|textId)="\w+"/g, "").replace("<w:trPr>", "<w:trPr><w:cantSplit/>");
+  let r = completarBordes(fila).replace(/ w14:(paraId|textId)="\w+"/g, "").replace("<w:trPr>", "<w:trPr><w:cantSplit/>");
   const celdas = r.match(/<w:tc>[\s\S]*?<\/w:tc>/g) ?? [];
   if (celdas.length !== valores.length) throw new Error("Plantilla: número de columnas inesperado.");
   celdas.forEach((c, i) => {
@@ -300,7 +316,7 @@ export async function generarDocx(plantilla: ArrayBuffer | Uint8Array, v: Valida
     ),
     llenarFila(filaSubtotal, [`SUBTOTAL ${g.nombre.toUpperCase()}`, String(g.horas), pesos(g.valor)]),
   ]);
-  x = x.slice(0, t0) + tbl.slice(0, tbl.indexOf(encabezado)) + filas.slice(0, 2).join("") + cuerpo.join("") + "</w:tbl>" + x.slice(t1);
+  x = x.slice(0, t0) + tbl.slice(0, tbl.indexOf(encabezado)) + filas.slice(0, 2).map(completarBordes).join("") + cuerpo.join("") + "</w:tbl>" + x.slice(t1);
 
   const reemplazos: [string, string][] = [
     ["ANA", p.nombre],

@@ -70,6 +70,9 @@ describe("validar (cuenta de cobro, sin IA)", () => {
     expect(xml).toContain("SUBTOTAL DERECHO");
     expect(xml).toContain("$120.000");
     expect(xml).not.toMatch(/w:color w:val="(EE0000|FF0000|C00000)"/);
+    // Todas las líneas de la tabla quedan explícitas (el PDF de LibreOffice no inventa las que faltan).
+    const tabla = xml.slice(xml.indexOf("<w:tbl>"), xml.indexOf("</w:tbl>"));
+    expect(tabla).not.toMatch(/<w:(top|left|bottom|right) w:val="(nil|none)"\/>/);
   });
 });
 
