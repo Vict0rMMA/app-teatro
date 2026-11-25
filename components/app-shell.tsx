@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { useSession } from "./auth-provider";
-import { IconClock, IconHistory, IconLogout, IconMore, IconPlus, IconReceipt } from "./icons";
+import { IconClock, IconHistory, IconLogout, IconPlus, IconReceipt, IconSettings } from "./icons";
 import { ThemeToggle } from "./theme";
 import { cx } from "./ui";
 
@@ -79,12 +79,10 @@ function OfflineBanner() {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { profile, user, signOut } = useSession();
-  const [more, setMore] = useState(false);
   const isAdmin = !!user.email && user.email.toLocaleLowerCase("en-US") === process.env.NEXT_PUBLIC_ADMIN_EMAIL?.trim().toLocaleLowerCase("en-US");
   const nav = NAV.filter((n) => !n.admin || isAdmin);
-  const masActivo = ["/ajustes", "/admin"].some((h) => isActive(pathname, h));
-
-  useEffect(() => setMore(false), [pathname]);
+  // Administración vive dentro de Ajustes en el celular: la pestaña Ajustes queda activa también ahí.
+  const ajustesActivo = ["/ajustes", "/admin"].some((h) => isActive(pathname, h));
 
   return (
     <div className="min-h-dvh md:pl-[208px]">
@@ -164,35 +162,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       <OfflineBanner />
       <main className="mx-auto w-full max-w-[1080px] px-4 pb-32 pt-7 sm:px-8 md:pb-16 md:pt-12">{children}</main>
 
-      {/* Menú "Más" (móvil) */}
-      {more && (
-        <div className="fixed inset-0 z-30 md:hidden" onClick={() => setMore(false)}>
-          <div className="absolute inset-0 bg-[#09090b]/30" />
-          <div
-            className="absolute inset-x-3 bottom-[calc(72px+env(safe-area-inset-bottom))] animate-dialog-in rounded-box border border-border bg-surface p-2 shadow-pop"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {nav
-              .filter((n) => !TABS.some((t) => t.href === n.href))
-              .map(({ href, label }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className={cx("flex h-11 items-center rounded-ctl px-3 text-[15px]", isActive(pathname, href) ? "font-medium text-fg" : "text-muted")}
-                >
-                  {label}
-                </Link>
-              ))}
-            <div className="mt-1 border-t border-border px-3 pt-2">
-              <p className="truncate text-[12px] text-muted">{user.email}</p>
-              <button onClick={signOut} className="h-10 text-[15px] text-brand">
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Pestañas (móvil) */}
       <nav
         aria-label="Secciones"
@@ -214,15 +183,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
         <Tab {...TABS[2]} active={isActive(pathname, TABS[2].href)} />
-        <button
-          onClick={() => setMore((m) => !m)}
-          aria-expanded={more}
-          className={cx("relative flex h-[60px] flex-col items-center justify-center gap-1 text-[11px]", masActivo || more ? "text-fg" : "text-muted")}
-        >
-          {masActivo && <span aria-hidden className="absolute inset-x-5 top-0 h-0.5 bg-brand" />}
-          <IconMore width={20} height={20} />
-          Más
-        </button>
+        <Tab href="/ajustes" label="Ajustes" icon={IconSettings} active={ajustesActivo} />
       </nav>
     </div>
   );

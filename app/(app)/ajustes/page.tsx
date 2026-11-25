@@ -6,7 +6,7 @@ import { useState, type FormEvent } from "react";
 import { useSession } from "@/components/auth-provider";
 import { FirmaField } from "@/components/firma/firma-field";
 import { filenameFrom, saveBlob, usePlaces } from "@/components/hooks";
-import { IconCheck, IconDownload, IconPencil, IconPlus, IconTrash, IconX } from "@/components/icons";
+import { IconCheck, IconDownload, IconLogout, IconPencil, IconPlus, IconTrash, IconX } from "@/components/icons";
 import { useToast } from "@/components/toast";
 import { Button, Card, CardHeader, Field, Input, Modal, PageHeader, Textarea } from "@/components/ui";
 import { addPlace, deletePlace, placeInUse, renamePlace, setFirma, updateProfile } from "@/lib/data";
@@ -19,6 +19,7 @@ export default function AjustesPage() {
     <>
       <PageHeader title="Ajustes" description="Tu perfil, los valores que se llenan solos y tus lugares de trabajo." />
       <div className="space-y-5">
+        <CuentaMovil />
         <PerfilCard />
         <DefaultsCard />
         <UbicacionesCard />
@@ -443,6 +444,41 @@ function DatosCard() {
         </p>
         <Input className="mt-4" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" />
       </Modal>
+    </Card>
+  );
+}
+
+/** Solo en celular (en computador esto está en la barra lateral): cuenta, Administración y salir. */
+function CuentaMovil() {
+  const { user, profile, signOut } = useSession();
+  const isAdmin = !!user.email && user.email.toLocaleLowerCase("en-US") === process.env.NEXT_PUBLIC_ADMIN_EMAIL?.trim().toLocaleLowerCase("en-US");
+  return (
+    <Card className="md:hidden">
+      <div className="flex items-center gap-3 p-4">
+        <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand text-sm font-bold text-brand-fg">
+          {profile.nombre
+            .trim()
+            .split(/\s+/)
+            .filter((_, i, a) => i === 0 || i === (a.length >= 4 ? 2 : 1))
+            .map((w) => w[0] ?? "")
+            .join("")
+            .toUpperCase()}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold">{profile.nombre}</p>
+          <p className="truncate text-xs text-muted">{user.email}</p>
+        </div>
+      </div>
+      <div className="divide-y divide-border border-t border-border text-[15px]">
+        {isAdmin && (
+          <Link href="/admin" className="flex h-12 items-center justify-between px-4">
+            Administración <span aria-hidden className="text-muted">›</span>
+          </Link>
+        )}
+        <button onClick={signOut} className="flex h-12 w-full items-center gap-2 px-4 text-left text-brand">
+          <IconLogout width={16} height={16} /> Cerrar sesión
+        </button>
+      </div>
     </Card>
   );
 }
