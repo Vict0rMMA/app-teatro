@@ -215,7 +215,7 @@ export function Notice({ tone = "warn", children, className }: { tone?: "warn" |
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cx("animate-pulse rounded-ctl bg-subtle", className)} />;
+  return <div className={cx("animate-cargando rounded-ctl bg-subtle", className)} />;
 }
 
 export function PageHeader({

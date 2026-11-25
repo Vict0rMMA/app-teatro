@@ -23,6 +23,8 @@ export async function GET(req: Request) {
           emailVerificado: account.emailVerified,
           registradoEn: account.metadata.creationTime,
           ultimoIngreso: account.metadata.lastSignInTime || null,
+          // Se actualiza cada vez que la app renueva la sesión (al abrirla y mientras se usa).
+          ultimaActividad: account.metadata.lastRefreshTime || account.metadata.lastSignInTime || null,
           deshabilitado: account.disabled,
         })),
         nextPageToken: result.pageToken ?? null,

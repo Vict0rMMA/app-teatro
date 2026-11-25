@@ -33,7 +33,7 @@ export default function PrivacidadPage() {
           <h2>Qué datos guardamos</h2>
           <ul>
             <li>Tu cuenta: correo electrónico y método de ingreso (correo o Google).</li>
-            <li>El administrador puede consultar el nombre, correo, estado de verificación, fecha de registro y último ingreso de las cuentas para administrar el acceso a la aplicación.</li>
+            <li>El administrador puede consultar el nombre, correo, estado de verificación, fecha de registro y último ingreso o actividad de las cuentas para administrar el acceso a la aplicación.</li>
             <li>Tu perfil: nombre completo, firma (imagen, opcional) y textos por defecto.</li>
             <li>Tus horas: fecha, evento, lugar de trabajo, horario, horas y valor.</li>
             <li>

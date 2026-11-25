@@ -33,10 +33,12 @@ export default {
       },
       keyframes: {
         "toast-in": { from: { opacity: "0", transform: "translateY(6px)" }, to: { opacity: "1", transform: "none" } },
+        cargando: { "0%, 100%": { opacity: "1" }, "50%": { opacity: "0.55" } },
         "dialog-in": { from: { opacity: "0", transform: "translateY(4px) scale(0.99)" }, to: { opacity: "1", transform: "none" } },
       },
       animation: {
         "toast-in": "toast-in 160ms cubic-bezier(0.2, 0, 0, 1)",
+        cargando: "cargando 1.8s ease-in-out infinite",
         "dialog-in": "dialog-in 140ms cubic-bezier(0.2, 0, 0, 1)",
       },
     },
