@@ -485,7 +485,7 @@ export default function NuevaPlanillaPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">¿Este evento tuvo seguidor?</p>
-                  <p className="mt-0.5 text-[13px] text-muted">Si hubo, recuerda agregarlo en el personal del evento.</p>
+                  <p className="mt-0.5 text-[13px] text-muted">Recuerda poner la 1 hora de más.</p>
                 </div>
                 <button
                   type="button"
