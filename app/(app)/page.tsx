@@ -360,15 +360,9 @@ export default function NuevaPlanillaPage() {
             Llenar los datos a mano
           </Button>
         </div>
-        <ol className="mt-12 grid gap-6 border-t border-border pt-6 text-[13px] sm:grid-cols-4">
-          {PASOS.map((p, i) => (
-            <li key={p.id}>
-              <p className="tabular font-bold tracking-tight text-lg text-muted">{String(i + 1).padStart(2, "0")}</p>
-              <p className="mt-1 font-medium">{p.label}</p>
-              <p className="mt-0.5 text-muted">{p.desc}</p>
-            </li>
-          ))}
-        </ol>
+        <p className="mt-10 border-t border-border pt-5 text-[13px] text-muted">
+          Después revisas el evento, el personal y el cierre, y descargas REGISTRO, LLAVES, COLILLAS y EVALUACIÓN.
+        </p>
       </>
     );
   }
@@ -803,10 +797,10 @@ export default function NuevaPlanillaPage() {
 }
 
 const PASOS = [
-  { id: "paso-archivo", label: "Archivo", desc: "El registro de personal en .docx o .pdf." },
-  { id: "paso-evento", label: "Evento", desc: "Nombre, fecha, citación y aforo." },
-  { id: "paso-personal", label: "Personal", desc: "Llegadas, horas y valor de cada persona." },
-  { id: "paso-cierre", label: "Cierre", desc: "Llaves, evaluación, colillas, firma y tus horas." },
+  { id: "paso-archivo", label: "Archivo" },
+  { id: "paso-evento", label: "Evento" },
+  { id: "paso-personal", label: "Personal" },
+  { id: "paso-cierre", label: "Cierre" },
 ] as const;
 
 function hoyLargo() {
