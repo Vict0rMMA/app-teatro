@@ -408,6 +408,31 @@ export default function NuevaPlanillaPage() {
 
   return (
     <form onSubmit={submit} noValidate>
+      {mostrarAvisoSeguidor && (
+        <aside
+          className="fixed bottom-24 right-4 z-[60] flex w-[min(420px,calc(100vw-2rem))] items-start gap-3 rounded-box border border-brand/25 bg-surface px-4 py-3 shadow-lg sm:bottom-6 sm:right-6"
+          aria-label="Recordatorio sobre seguidores"
+          role="status"
+          aria-live="polite"
+        >
+          <span aria-hidden className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand/10 text-brand">
+            <IconUsers width={17} height={17} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">¿Este evento tuvo seguidor?</p>
+            <p className="mt-0.5 text-[13px] text-muted">Recuerda poner la 1 hora de más.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMostrarAvisoSeguidor(false)}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-ctl text-muted transition-colors hover:bg-subtle hover:text-fg"
+            aria-label="Cerrar aviso"
+            title="Cerrar aviso"
+          >
+            <IconX width={16} height={16} />
+          </button>
+        </aside>
+      )}
       <div ref={formTop} className="scroll-mt-28" />
       <PageHeader
         eyebrow="Nueva planilla"
@@ -478,26 +503,6 @@ export default function NuevaPlanillaPage() {
 
           {/* 2 · Evento */}
           <Paso id="paso-evento" n={2} title="Evento" description="Sale en el encabezado de las cuatro planillas.">
-            {mostrarAvisoSeguidor && (
-              <aside className="mb-4 flex items-start gap-3 rounded-box border border-brand/25 bg-brand-soft/40 px-4 py-3" aria-label="Recordatorio sobre seguidores">
-                <span aria-hidden className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand/10 text-brand">
-                  <IconUsers width={17} height={17} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">¿Este evento tuvo seguidor?</p>
-                  <p className="mt-0.5 text-[13px] text-muted">Recuerda poner la 1 hora de más.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMostrarAvisoSeguidor(false)}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-ctl text-muted transition-colors hover:bg-subtle hover:text-fg"
-                  aria-label="Cerrar aviso"
-                  title="Cerrar aviso"
-                >
-                  <IconX width={16} height={16} />
-                </button>
-              </aside>
-            )}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Field label="Nombre del evento" error={errors.evento} className="sm:col-span-2 lg:col-span-4">
                 {(id) => <Input id={id} value={draft.evento} onChange={(e) => set("evento", e.target.value)} placeholder="RED DE ESCUELAS" />}
