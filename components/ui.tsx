@@ -58,13 +58,14 @@ export const Button = forwardRef<
   );
 });
 
-/** Aro que gira, hecho con borde CSS: se ve liso y nítido a cualquier tamaño. */
+/** Indicador de carga: tres puntos que se encienden en secuencia (solo opacidad, nítido). */
 export function Spinner({ className }: { className?: string }) {
   return (
-    <span
-      aria-hidden
-      className={cx("inline-block h-4 w-4 shrink-0 animate-[spin_0.7s_linear_infinite] rounded-full border-2 border-current border-r-transparent opacity-90", className)}
-    />
+    <span aria-hidden className={cx("inline-flex h-4 w-4 shrink-0 items-center justify-center gap-[3px]", className)}>
+      {[0, 160, 320].map((d) => (
+        <span key={d} className="h-[4px] w-[4px] animate-puntos rounded-full bg-current" style={{ animationDelay: `${d}ms` }} />
+      ))}
+    </span>
   );
 }
 

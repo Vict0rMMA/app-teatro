@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSession } from "@/components/auth-provider";
 import { DEPENDENCIAS, withDefaults } from "@/lib/schemas";
@@ -31,11 +32,6 @@ interface FormState {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const ymKey = (y: number, m: number) => `${y}-${pad(m + 1)}`;
-
-function csvCell(v: string | number | null) {
-  const s = v == null ? "" : String(v);
-  return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
 
 function nombreLugar(nombre: string) {
   return nombre.toLocaleLowerCase("es") === "otro" ? "OPC" : nombre;
@@ -189,15 +185,34 @@ export default function HorasPage() {
     setToDelete(null);
   }
 
-  function exportCsv() {
-    const rows = [
-      ["Fecha", "Evento", "Lugar", "Para quién", "Llegada", "Salida", "Horas", "Valor"],
-      ...delMes.map((l) => [l.fecha, l.evento, placeName.get(l.placeId) ?? "", l.paraQuien ?? "", l.llegada ?? "", l.salida ?? "", l.horas ?? "", l.valor ?? ""]),
-      ["", "", "", "", "Total", total.horas, total.valor],
-    ];
-    const csv = "﻿" + rows.map((r) => r.map(csvCell).join(";")).join("\r\n");
-    saveBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), `mis-horas-${mes}.csv`);
+  const [exportando, setExportando] = useState(false);
+  async function exportExcel() {
+    setExportando(true);
+    try {
+      const { excelHoras } = await import("@/lib/excel-horas");
+      const blob = await excelHoras({
+        anio: ym.y,
+        mes: ym.m,
+        nombre: profile.nombre,
+        filas: delMes.map((l) => ({
+          fecha: l.fecha,
+          evento: l.evento,
+          lugar: nombreLugar(placeName.get(l.placeId) ?? ""),
+          paraQuien: l.paraQuien ?? "",
+          llegada: l.llegada,
+          salida: l.salida,
+          horas: l.horas,
+          valor: l.valor,
+        })),
+      });
+      saveBlob(blob, `Mis horas ${MESES[ym.m]} ${ym.y}.xlsx`);
+    } catch {
+      toast.error("No se pudo crear el Excel", "Intenta de nuevo.");
+    } finally {
+      setExportando(false);
+    }
   }
+
 
   const setF = (patch: Partial<FormState>) => setForm((f) => (f ? { ...f, ...patch } : f));
   // Horas: mientras el valor no se haya escrito a mano, se calcula horas × valor por hora.
@@ -239,8 +254,8 @@ export default function HorasPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button icon={<IconDownload />} onClick={exportCsv} disabled={!delMes.length}>
-            CSV
+          <Button icon={<IconDownload />} onClick={exportExcel} loading={exportando} disabled={!delMes.length}>
+            Excel
           </Button>
           <Button variant="primary" icon={<IconPlus />} onClick={() => openNew()} disabled={!places}>
             Agregar horas
@@ -551,7 +566,17 @@ export default function HorasPage() {
               </p>
             </div>
 
-            <Field label="Valor" hint={!form.valorManual && form.horas ? `${form.horas} h × ${formatCOP(valorHora)}. Puedes cambiarlo.` : undefined}>
+            <Field
+              label="Valor"
+              hint={
+                <>
+                  {!form.valorManual && form.horas ? `${form.horas} h × ${formatCOP(valorHora)}` : `${formatCOP(valorHora)} la hora`} ·{" "}
+                  <Link href="/ajustes" className="font-medium text-fg underline underline-offset-2">
+                    Cambiar en Ajustes
+                  </Link>
+                </>
+              }
+            >
               {(id) => (
                 <div className="relative">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>

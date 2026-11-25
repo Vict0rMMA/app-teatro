@@ -314,15 +314,28 @@
 .escena-tarjeta form > :nth-child(7) { --n: 6; }
 .escena-tarjeta form > :nth-child(n + 8) { --n: 7; }
 
-/* Quedan ~140 px de tela recogida a cada lado, con los pliegues sin deformar. */
+/* Tela recogida a cada lado según el ancho: no tapa el formulario en celular. */
+.escenario {
+  --recogido: 28px;
+}
+@media (min-width: 640px) {
+  .escenario {
+    --recogido: 72px;
+  }
+}
+@media (min-width: 1024px) {
+  .escenario {
+    --recogido: 140px;
+  }
+}
 @keyframes telon-izq {
   to {
-    transform: translateX(calc(-100% + 140px));
+    transform: translateX(calc(-100% + var(--recogido)));
   }
 }
 @keyframes telon-der {
   to {
-    transform: translateX(calc(100% - 140px));
+    transform: translateX(calc(100% - var(--recogido)));
   }
 }
 @keyframes aparece {
