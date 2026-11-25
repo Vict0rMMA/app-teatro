@@ -69,6 +69,8 @@ export interface Defaults {
   ubicaciones: Record<string, string>;
   /** coordinadores por grupo, para elegir "¿a quién le trabajaste?" en Mis horas */
   coordinadores: Record<string, string[]>;
+  /** invitación del grupo de WhatsApp (https://chat.whatsapp.com/…); se guarda en el perfil, nunca en el código */
+  grupoWhatsapp: string;
 }
 
 export const DEFAULTS: Defaults = {
@@ -81,6 +83,7 @@ export const DEFAULTS: Defaults = {
   extraAC: 1,
   extraC: 2,
   ubicaciones: { S: "Seguidores" },
+  grupoWhatsapp: "",
   coordinadores: {
     OPC: ["Valeria Areiza", "Valentina Maya", "Laura Petro", "Sara Ríos"],
     TEATRO: ["Sara Ríos", "Ana"],

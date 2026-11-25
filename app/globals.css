@@ -368,7 +368,14 @@
   }
 }
 
-/* Previsualización de docx: el papel se ve igual en modo oscuro. */
+/*
+ * Previsualización de docx. Los logos flotantes (wp:anchor con wrapNone) quedan dentro de una caja
+ * de ancho 0; el max-width: 100% del reset de Tailwind los dejaba en 0 px y no se veían.
+ */
+.docx-preview-host img {
+  max-width: none;
+}
+/* El papel se ve igual en modo oscuro. */
 .docx-preview-host .docx-wrapper {
   background: transparent !important;
   padding: 16px 0 !important;

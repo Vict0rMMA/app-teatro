@@ -7,9 +7,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/components/auth-provider";
 import { DocxPreview } from "@/components/docx-preview";
 import { filenameFrom, saveBlob } from "@/components/hooks";
-import { IconAlert, IconCheck, IconCopy, IconDownload, IconEye, IconFile, IconTrash, IconWhatsapp } from "@/components/icons";
+import { IconAlert, IconCheck, IconCopy, IconDownload, IconEye, IconFile, IconPencil, IconTrash, IconWhatsapp } from "@/components/icons";
 import { useToast } from "@/components/toast";
-import { Badge, Button, EmptyState, Card, Modal, Skeleton, Spinner, cx } from "@/components/ui";
+import { Badge, Button, EmptyState, Card, Modal, Skeleton, Spinner, Textarea, cx } from "@/components/ui";
 import { getStaff, watchEvent, type EventDoc, type StaffDoc } from "@/lib/data";
 import { withDefaults } from "@/lib/schemas";
 import { apiFetch, apiJson } from "@/lib/firebase/client";
@@ -36,13 +36,23 @@ async function fetchFile(eventId: string, file: string) {
 export default function PlanillaPage() {
   const { id } = useParams<{ id: string }>();
   const { user, profile } = useSession();
-  const ubicaciones = withDefaults(profile.defaults).ubicaciones;
+  const { ubicaciones, grupoWhatsapp: grupo } = withDefaults(profile.defaults);
   const router = useRouter();
   const toast = useToast();
   const [event, setEvent] = useState<EventDoc | null | undefined>(undefined);
   const [staff, setStaff] = useState<StaffDoc[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // Mensaje de WhatsApp editable. Los cambios se guardan en este equipo, por planilla.
+  const claveMensaje = `wa-mensaje:${id}`;
+  const [mensajeEditado, setMensajeEditado] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`wa-mensaje:${id}`);
+    } catch {
+      return null;
+    }
+  });
+  const [editando, setEditando] = useState(false);
   const [preview, setPreview] = useState<Key | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // REGISTRO completo (con cédulas y teléfonos): solo existe en memoria justo después de generar.
@@ -86,18 +96,43 @@ export default function PlanillaPage() {
     }
   }
 
-  async function copy() {
-    if (!event) return;
+  const mensaje = mensajeEditado ?? event?.whatsapp ?? "";
+  const editado = mensajeEditado != null && mensajeEditado !== event?.whatsapp;
+  function cambiarMensaje(texto: string) {
+    const original = texto === event?.whatsapp;
+    setMensajeEditado(original ? null : texto);
     try {
-      await navigator.clipboard.writeText(event.whatsapp);
+      if (original) localStorage.removeItem(claveMensaje);
+      else localStorage.setItem(claveMensaje, texto);
+    } catch {
+      /* sin almacenamiento: se queda solo en esta pantalla */
+    }
+  }
+
+  async function copiarTexto(texto: string) {
+    try {
+      await navigator.clipboard.writeText(texto);
     } catch {
       const t = document.createElement("textarea");
-      t.value = event.whatsapp;
+      t.value = texto;
       document.body.appendChild(t);
       t.select();
       document.execCommand("copy");
       t.remove();
     }
+  }
+
+  async function copiarYAbrirGrupo() {
+    // Se abre primero (en el mismo gesto del clic) para que el navegador no lo bloquee.
+    window.open(grupo, "_blank", "noopener");
+    await copiarTexto(mensaje);
+    setEditando(false);
+    toast.success("Mensaje copiado", "En el grupo, pega con Ctrl+V o mantén presionado → Pegar.");
+  }
+
+  async function copy() {
+    if (!event) return;
+    await copiarTexto(mensaje);
     setCopied(true);
     toast.success("Mensaje copiado", "Pégalo en el grupo de WhatsApp.");
     setTimeout(() => setCopied(false), 2000);
@@ -338,27 +373,79 @@ export default function PlanillaPage() {
           <section>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="eyebrow text-fg">Mensaje para el grupo</h2>
-              <button onClick={copy} className="inline-flex items-center gap-1.5 text-xs font-medium text-brand underline-offset-2 hover:underline">
-                {copied ? <IconCheck width={13} height={13} /> : <IconCopy width={13} height={13} />}
-                {copied ? "Copiado" : "Copiar"}
-              </button>
+              {!editando ? (
+                <button onClick={() => setEditando(true)} className="inline-flex items-center gap-1.5 text-xs font-medium text-brand underline-offset-2 hover:underline">
+                  <IconPencil width={13} height={13} /> Editar
+                </button>
+              ) : (
+                <button onClick={() => setEditando(false)} className="inline-flex items-center gap-1.5 text-xs font-medium text-brand underline-offset-2 hover:underline">
+                  <IconCheck width={13} height={13} /> Listo
+                </button>
+              )}
             </div>
-            <div className="rounded-box border border-border bg-[#efeae2] p-4 dark:bg-[#0b141a]">
-              <div className="relative ml-auto max-w-[95%] rounded-lg rounded-tr-none bg-[#d9fdd3] px-3 pb-5 pt-2 text-[13.5px] leading-relaxed text-[#111b21] shadow-sm dark:bg-[#005c4b] dark:text-[#e9edef]">
-                <WhatsappText text={event.whatsapp} />
-                <span className="absolute bottom-1 right-2 inline-flex items-center gap-0.5 text-[10px] text-[#667781] dark:text-[#ffffff99]">
-                  ahora <IconCheck width={12} height={12} className="text-[#53bdeb]" />
-                </span>
+
+            {editando ? (
+              <div>
+                <Textarea
+                  autoFocus
+                  rows={10}
+                  value={mensaje}
+                  onChange={(e) => cambiarMensaje(e.target.value)}
+                  className="text-[13.5px] leading-relaxed"
+                  aria-label="Mensaje para el grupo"
+                />
+                <div className="mt-1.5 flex items-center justify-between text-xs text-muted">
+                  <span>*texto* sale en negrita en WhatsApp.</span>
+                  {editado && (
+                    <button onClick={() => cambiarMensaje(event.whatsapp)} className="underline underline-offset-2 hover:text-fg">
+                      Volver al original
+                    </button>
+                  )}
+                </div>
               </div>
+            ) : (
+              <button
+                onClick={() => setEditando(true)}
+                className="block w-full rounded-box border border-border bg-[#efeae2] p-4 text-left transition-colors duration-100 hover:border-fg/25 dark:bg-[#0b141a]"
+                aria-label="Editar el mensaje"
+              >
+                <div className="relative ml-auto max-w-[95%] rounded-lg rounded-tr-none bg-[#d9fdd3] px-3 pb-5 pt-2 text-[13.5px] leading-relaxed text-[#111b21] shadow-sm dark:bg-[#005c4b] dark:text-[#e9edef]">
+                  <WhatsappText text={mensaje} />
+                  <span className="absolute bottom-1 right-2 inline-flex items-center gap-0.5 text-[10px] text-[#667781] dark:text-[#ffffff99]">
+                    {editado ? "editado" : "ahora"} <IconCheck width={12} height={12} className="text-[#53bdeb]" />
+                  </span>
+                </div>
+              </button>
+            )}
+
+            <div className="mt-3 grid gap-2">
+              {grupo ? (
+                <Button variant="primary" icon={<IconWhatsapp width={15} height={15} />} onClick={copiarYAbrirGrupo}>
+                  Copiar y abrir el grupo
+                </Button>
+              ) : (
+                <p className="text-xs text-muted">
+                  <Link href="/ajustes" className="font-medium text-fg underline underline-offset-2">
+                    Pon el enlace del grupo en Ajustes
+                  </Link>{" "}
+                  para abrirlo directo desde aquí.
+                </p>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <Button icon={copied ? <IconCheck width={15} height={15} /> : <IconCopy width={15} height={15} />} onClick={copy}>
+                  {copied ? "Copiado" : "Copiar"}
+                </Button>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(mensaje)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-ctl border border-border text-sm font-medium transition-colors duration-100 hover:border-fg/30 hover:bg-surface sm:h-9"
+                >
+                  <IconWhatsapp width={15} height={15} /> Otro chat
+                </a>
+              </div>
+              {grupo && <p className="text-[11px] leading-relaxed text-muted">El grupo se abre sin el texto (WhatsApp no deja prellenarlo): solo pega con Ctrl+V o mantén presionado → Pegar.</p>}
             </div>
-            <a
-              href={`https://wa.me/?text=${encodeURIComponent(event.whatsapp)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-fg"
-            >
-              <IconWhatsapp width={14} height={14} /> Abrir en WhatsApp
-            </a>
           </section>
 
           {event.evaluacion?.notas?.length > 0 && (
