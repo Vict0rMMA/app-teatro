@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ClipboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type ClipboardEvent } from "react";
 import { useSession } from "@/components/auth-provider";
 import { saveBlob } from "@/components/hooks";
 import { useToast } from "@/components/toast";
@@ -8,6 +8,7 @@ import { Badge, Button, Card, Field, Input, Notice, Spinner, Textarea, cx } from
 import type { Extraccion, Validacion } from "@/lib/cuenta-cobro";
 import { apiFetch } from "@/lib/firebase/client";
 import type { Comparacion, RegistroPersonal } from "@/lib/registros";
+import { DocxPreview } from "@/components/docx-preview";
 
 type Imagen = { base64: string; mediaType: "image/jpeg"; preview: string };
 type Firma = { base64: string; tipo: "png" | "jpeg"; anchoPx: number; altoPx: number };
@@ -70,6 +71,7 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
   const [cargando, setCargando] = useState<"" | "revisar" | "word">("");
   const [error, setError] = useState("");
   const [res, setRes] = useState<Respuesta | null>(null);
+  const [docxGenerado, setDocxGenerado] = useState<Blob | null>(null);
   const [datos, setDatos] = useState({ celular: "", direccion: "", ciudad: "Medellín - Antioquia" });
   const [usarFirmaPerfil, setUsarFirmaPerfil] = useState(!!profile.firma);
   const [firmaArchivo, setFirmaArchivo] = useState<Firma | null>(null);
@@ -139,13 +141,26 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
         const j = await r.json().catch(() => ({}));
         throw new Error([j.error, ...(j.errores ?? [])].filter(Boolean).join(" ") || `Error ${r.status}`);
       }
-      saveBlob(await r.blob(), `Cuenta de cobro_${nombre}.docx`);
-      toast.success("Cuenta de cobro descargada", "Ábrela en Word y guárdala como PDF.");
+      const blob = await r.blob();
+      setDocxGenerado(blob);
+      saveBlob(blob, `Cuenta de cobro_${nombre}.docx`);
+      toast.success("Cuenta de cobro lista", "El formato oficial incluye las declaraciones requeridas.");
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setCargando("");
     }
+  }
+
+  const cargarDocxGenerado = useCallback(async () => {
+    if (!docxGenerado) throw new Error("Genera primero la cuenta de cobro.");
+    return docxGenerado;
+  }, [docxGenerado]);
+
+  function guardarComoPdf() {
+    document.body.classList.add("cuenta-imprimir");
+    window.addEventListener("afterprint", () => document.body.classList.remove("cuenta-imprimir"), { once: true });
+    window.print();
   }
 
   const v = res?.validacion;
@@ -376,7 +391,7 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
 
           {/* 4 · Datos y Word */}
           <section className="border-t border-border pb-6 pt-8">
-            <h2 className="font-bold tracking-tight text-[22px]">Tus datos y el Word</h2>
+            <h2 className="font-bold tracking-tight text-[22px]">Tus datos y el formato oficial</h2>
             <p className="mt-1 max-w-prose text-[13px] text-muted">Se usan solo para llenar el documento; no se guardan.</p>
             <div className="mt-5 grid gap-4 md:grid-cols-3">
               <Field label="Celular">{(id) => <Input id={id} inputMode="tel" autoComplete="tel" value={datos.celular} onChange={(e) => setDatos({ ...datos, celular: e.target.value })} />}</Field>
@@ -424,7 +439,7 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button variant="primary" size="lg" loading={cargando === "word"} disabled={!listo || !!cargando} onClick={descargar}>
-                Descargar Word
+                Generar cuenta de cobro
               </Button>
               {!v.ok ? (
                 <p className="text-[13px] text-danger">Corrige los errores del consolidado primero.</p>
@@ -432,13 +447,26 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
                 <p className="text-[13px] text-muted">Completa celular, dirección y ciudad.</p>
               ) : null}
             </div>
+
+            {docxGenerado && (
+              <div className="cuenta-docx-preview mt-8 space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="font-semibold">Vista previa para PDF</h3>
+                    <p className="mt-1 text-[13px] text-muted">Incluye la declaración de veracidad, la autorización de datos personales y la declaración tributaria del formato recibido.</p>
+                  </div>
+                  <Button variant="primary" onClick={guardarComoPdf}>Imprimir / Guardar como PDF</Button>
+                </div>
+                <DocxPreview load={cargarDocxGenerado} />
+              </div>
+            )}
           </section>
 
           <section className="mt-4 rounded-box bg-subtle/70 px-5 py-4 text-[13px] leading-relaxed">
             <p className="eyebrow text-fg">Para enviar</p>
             <ol className="mt-2 list-decimal space-y-1 pl-5">
               <li>
-                Abre el Word → Archivo → Guardar como → PDF: <span className="font-medium">{v.correo.archivo}</span>
+                Genera la cuenta y usa “Imprimir / Guardar como PDF”. En el diálogo del navegador elige “Guardar como PDF” y usa el nombre <span className="font-medium">{v.correo.archivo}</span>.
               </li>
               <li>
                 Correo nuevo a <span className="font-medium">{v.correo.para}</span>, asunto <span className="font-medium">{v.correo.asunto}</span>.

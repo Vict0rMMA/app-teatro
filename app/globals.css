@@ -397,3 +397,34 @@
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 8px 24px -8px rgb(0 0 0 / 0.18) !important;
   margin-bottom: 16px !important;
 }
+
+@media print {
+  body.cuenta-imprimir * {
+    visibility: hidden !important;
+  }
+  body.cuenta-imprimir .cuenta-docx-preview,
+  body.cuenta-imprimir .cuenta-docx-preview * {
+    visibility: visible !important;
+  }
+  body.cuenta-imprimir .cuenta-docx-preview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    color: #000 !important;
+    background: #fff !important;
+  }
+  body.cuenta-imprimir .cuenta-docx-preview > div:first-child {
+    display: none !important;
+  }
+  body.cuenta-imprimir .docx-preview-host .docx-wrapper {
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  body.cuenta-imprimir .docx-preview-host .docx-wrapper > section.docx {
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    break-after: page;
+  }
+}
