@@ -155,6 +155,7 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
             nombre,
             cedula,
             ...datos,
+            fechaEmision: reenvio.fecha,
             firma,
             reenvio: reenvio.activo ? { fecha: reenvio.fecha, consecutivo: reenvio.consecutivo } : undefined,
           },

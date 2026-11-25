@@ -136,6 +136,7 @@ export type DatosPersona = {
   celular: string;
   direccion: string;
   ciudad: string;
+  fechaEmision?: string;
   firma?: { data: Uint8Array; tipo: "png" | "jpeg"; anchoPx: number; altoPx: number };
   /** Solo para reenvíos: fecha de hoy y consecutivo con sufijo (ej. "2026-10A"). */
   reenvio?: { fecha: string; consecutivo: string };
@@ -194,6 +195,23 @@ function reemplazarTexto(x: string, buscar: string, poner: string, ultimaCoincid
   return actualizado;
 }
 
+function transformarParrafo(x: string, coincide: (texto: string) => boolean, transformar: (texto: string) => string): string {
+  let encontrados = 0;
+  const actualizado = x.replace(/<w:p\b[^>]*>[\s\S]*?<\/w:p>/g, (parrafo) => {
+    const nodos = [...parrafo.matchAll(/<w:t([^>]*)>([\s\S]*?)<\/w:t>/g)];
+    const texto = nodos.map((n) => decodificarXml(n[2]!)).join("");
+    if (!coincide(texto)) return parrafo;
+    encontrados++;
+    const nuevoTexto = transformar(texto);
+    let i = 0;
+    return parrafo.replace(/(<w:t[^>]*>)[\s\S]*?(<\/w:t>)/g, (_todo, apertura: string, cierre: string) => {
+      return `${apertura}${i++ === 0 ? esc(nuevoTexto) : ""}${cierre}`;
+    });
+  });
+  if (encontrados > 1) throw new Error("Plantilla: hay más de un campo de período o fecha.");
+  return actualizado;
+}
+
 function llenarFila(fila: string, valores: string[]): string {
   let r = fila.replace(/ w14:(paraId|textId)="\w+"/g, "").replace("<w:trPr>", "<w:trPr><w:cantSplit/>");
   const celdas = r.match(/<w:tc>[\s\S]*?<\/w:tc>/g) ?? [];
@@ -239,9 +257,17 @@ export async function generarDocx(plantilla: ArrayBuffer | Uint8Array, v: Valida
   ];
   for (const [i, [a, b]] of reemplazos.entries()) x = reemplazarTexto(x, a, b, i === 4);
 
-  if (p.reenvio) {
-    x = x.replace(/Medellín, \d{1,2} de [A-Za-zÁÉÍÓÚáéíóú]+ de \d{4}/, `Medellín, ${esc(p.reenvio.fecha)}`);
-    x = x.replace(/<w:t>\d{4}-\d{2}A?<\/w:t>/, `<w:t>${esc(p.reenvio.consecutivo)}</w:t>`);
+  const primeraFila = v.grupos[0]?.filas[0];
+  if (primeraFila) {
+    const [, mes, anio] = primeraFila.fecha.split("/").map(Number);
+    const mesNombre = MESES[mes - 1];
+    const consecutivo = p.reenvio?.consecutivo ?? `${anio}-${String(mes).padStart(2, "0")}`;
+    const fechaEmision = p.reenvio?.fecha ?? p.fechaEmision;
+    x = transformarParrafo(x, (s) => /N°\s*\d{4}-\d{2}A?/.test(s), (s) => s.replace(/N°\s*\d{4}-\d{2}A?/, `N° ${consecutivo}`));
+    if (fechaEmision) x = transformarParrafo(x, (s) => s.startsWith("Medellín,"), () => `Medellín, ${fechaEmision}`);
+    x = transformarParrafo(x, (s) => /entre el \d+ y el \d+ de [A-Za-zÁÉÍÓÚáéíóú]+ del año \d{4}\./.test(s), (s) =>
+      s.replace(/entre el \d+ y el \d+ de [A-Za-zÁÉÍÓÚáéíóú]+ del año \d{4}\./, `entre el 1 y el ${new Date(anio, mes, 0).getDate()} de ${mesNombre} del año ${anio}.`),
+    );
   }
 
   if (p.firma) {
