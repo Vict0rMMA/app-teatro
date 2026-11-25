@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 type Body = {
   datos: Extraccion; // lo que devolvió /api/cuenta-cobro (ya revisado por el usuario)
+  plantilla?: { base64: string };
   persona: Omit<DatosPersona, "firma"> & {
     firma?: { base64: string; tipo: "png" | "jpeg"; anchoPx: number; altoPx: number };
   };
@@ -28,7 +29,15 @@ export async function POST(req: Request) {
     const v = validar(body.datos); // se revalida en el servidor: nunca confiar en el cliente
     if (!v.ok) throw new HttpError(422, "La cuenta tiene errores.", "VALIDACION_CUENTA", { errores: v.errores });
 
-    const plantilla = await readFile(path.join(process.cwd(), "plantilla", "cuenta_cobro_base.docx"));
+    let plantilla: Uint8Array;
+    if (body.plantilla?.base64) {
+      if (body.plantilla.base64.length > 2_800_000) throw new HttpError(413, "El formato DOCX supera el límite de 2 MB.");
+      plantilla = Buffer.from(body.plantilla.base64, "base64");
+      if (plantilla.length < 4 || plantilla[0] !== 0x50 || plantilla[1] !== 0x4b)
+        throw new HttpError(415, "El formato seleccionado no es un archivo DOCX válido.");
+    } else {
+      plantilla = await readFile(path.join(process.cwd(), "plantilla", "cuenta_cobro_base.docx"));
+    }
     const firma = p.firma
       ? { data: Buffer.from(p.firma.base64, "base64"), tipo: p.firma.tipo, anchoPx: p.firma.anchoPx, altoPx: p.firma.altoPx }
       : undefined;

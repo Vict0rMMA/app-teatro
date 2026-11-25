@@ -149,6 +149,51 @@ function reemplazarUno(x: string, buscar: string, poner: string): string {
   return x.replace(buscar, poner);
 }
 
+function decodificarXml(s: string): string {
+  return s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+}
+
+/** Sustituye texto aunque Word lo haya repartido entre varios runs dentro del mismo párrafo. */
+function reemplazarTexto(x: string, buscar: string, poner: string, ultimaCoincidencia = false): string {
+  const parrafosCoincidentes = [...x.matchAll(/<w:p\b[^>]*>[\s\S]*?<\/w:p>/g)].filter((m) => {
+    const texto = [...m[0]!.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map((n) => decodificarXml(n[1]!)).join("");
+    return texto.includes(buscar);
+  });
+  if (!parrafosCoincidentes.length || (!ultimaCoincidencia && parrafosCoincidentes.length !== 1))
+    throw new Error(`Plantilla: se esperaba una vez "${buscar}" y hay ${parrafosCoincidentes.length}.`);
+  const objetivo = ultimaCoincidencia ? parrafosCoincidentes.at(-1)![0]! : parrafosCoincidentes[0]![0]!;
+  const actualizado = x.replace(/<w:p\b[^>]*>[\s\S]*?<\/w:p>/g, (parrafo) => {
+    if (parrafo !== objetivo) return parrafo;
+    const nodos = [...parrafo.matchAll(/<w:t([^>]*)>([\s\S]*?)<\/w:t>/g)];
+    const valores = nodos.map((n) => decodificarXml(n[2]!));
+    const texto = valores.join("");
+    const inicio = texto.indexOf(buscar);
+    if (inicio < 0) return parrafo;
+    if (texto.indexOf(buscar, inicio + buscar.length) >= 0) throw new Error(`Plantilla: texto repetido "${buscar}".`);
+    const fin = inicio + buscar.length;
+    let offset = 0;
+    const nuevos = valores.map((valor) => {
+      const desde = offset;
+      const hasta = offset + valor.length;
+      offset = hasta;
+      const cruza = desde < fin && hasta > inicio;
+      if (!cruza) return valor;
+      const prefijo = valor.slice(0, Math.max(0, inicio - desde));
+      const sufijo = valor.slice(Math.max(0, fin - desde));
+      if (desde <= inicio && hasta >= fin) return prefijo + poner + sufijo;
+      if (desde <= inicio) return prefijo + poner;
+      if (hasta >= fin) return sufijo;
+      return "";
+    });
+    let i = 0;
+    return parrafo.replace(/(<w:t[^>]*>)[\s\S]*?(<\/w:t>)/g, (_todo, apertura: string, cierre: string) => {
+      const valor = nuevos[i++];
+      return `${apertura}${esc(valor ?? "")}${cierre}`;
+    });
+  });
+  return actualizado;
+}
+
 function llenarFila(fila: string, valores: string[]): string {
   let r = fila.replace(/ w14:(paraId|textId)="\w+"/g, "").replace("<w:trPr>", "<w:trPr><w:cantSplit/>");
   const celdas = r.match(/<w:tc>[\s\S]*?<\/w:tc>/g) ?? [];
@@ -183,16 +228,16 @@ export async function generarDocx(plantilla: ArrayBuffer | Uint8Array, v: Valida
   x = x.slice(0, t0) + tbl.slice(0, tbl.indexOf(encabezado)) + filas.slice(0, 2).join("") + cuerpo.join("") + "</w:tbl>" + x.slice(t1);
 
   const reemplazos: [string, string][] = [
-    [">ANA<", `>${esc(p.nombre)}<`],
-    ["C.C. 1234567891", `C.C. ${esc(p.cedula)}`],
-    [">$280.000<", `>${pesosSinEspacio(v.totalValor)}<`],
-    [">Ana Rios<", `>${esc(p.nombre)}<`],
-    [">123456789<", `>${esc(p.cedula)}<`],
-    [">3505486602<", `>${esc(p.celular)}<`],
-    [">Avenida 44 # 63- 03<", `>${esc(p.direccion)}<`],
-    [">Bello - Antioquia<", `>${esc(p.ciudad)}<`],
+    ["ANA", p.nombre],
+    ["C.C. 1234567891", `C.C. ${p.cedula}`],
+    ["$280.000", pesosSinEspacio(v.totalValor)],
+    ["Ana Rios", p.nombre],
+    ["C.C. 123456789", `C.C. ${p.cedula}`],
+    ["3505486602", p.celular],
+    ["Avenida 44 # 63- 03", p.direccion],
+    ["Bello - Antioquia", p.ciudad],
   ];
-  for (const [a, b] of reemplazos) x = reemplazarUno(x, a, b);
+  for (const [i, [a, b]] of reemplazos.entries()) x = reemplazarTexto(x, a, b, i === 4);
 
   if (p.reenvio) {
     x = x.replace(/Medellín, \d{1,2} de [A-Za-zÁÉÍÓÚáéíóú]+ de \d{4}/, `Medellín, ${esc(p.reenvio.fecha)}`);

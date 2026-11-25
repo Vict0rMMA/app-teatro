@@ -72,6 +72,8 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
   const [error, setError] = useState("");
   const [res, setRes] = useState<Respuesta | null>(null);
   const [docxGenerado, setDocxGenerado] = useState<Blob | null>(null);
+  const [formato, setFormato] = useState<File | null>(null);
+  const [errorFormato, setErrorFormato] = useState("");
   const [datos, setDatos] = useState({ celular: "", direccion: "", ciudad: "Medellín - Antioquia" });
   const [usarFirmaPerfil, setUsarFirmaPerfil] = useState(!!profile.firma);
   const [firmaArchivo, setFirmaArchivo] = useState<Firma | null>(null);
@@ -123,11 +125,19 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
     try {
       const { nombre, cedula } = res.datos.persona;
       const firma = usarFirmaPerfil && profile.firma ? await firmaDePerfil(profile.firma) : firmaArchivo ?? undefined;
+      let plantilla: { base64: string } | undefined;
+      if (formato) {
+        const bytes = new Uint8Array(await formato.arrayBuffer());
+        let binario = "";
+        for (let i = 0; i < bytes.length; i += 32_768) binario += String.fromCharCode(...bytes.subarray(i, i + 32_768));
+        plantilla = { base64: btoa(binario) };
+      }
       const r = await apiFetch("/api/cuenta-cobro/generar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           datos: res.datos,
+          plantilla,
           persona: {
             nombre,
             cedula,
@@ -398,6 +408,33 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
               <Field label="Dirección">{(id) => <Input id={id} autoComplete="street-address" value={datos.direccion} onChange={(e) => setDatos({ ...datos, direccion: e.target.value })} />}</Field>
               <Field label="Ciudad">{(id) => <Input id={id} value={datos.ciudad} onChange={(e) => setDatos({ ...datos, ciudad: e.target.value })} />}</Field>
             </div>
+
+            <Field label="Formato de cuenta de cobro" hint="Sube el DOCX oficial que te entregaron. Si no seleccionas uno, se usa el formato oficial incluido en la aplicación.">
+              {(id) => (
+                <div>
+                  <Input
+                    id={id}
+                    type="file"
+                    accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="file:mr-3 file:rounded-ctl file:border file:border-border file:bg-transparent file:px-3 file:py-1 file:text-fg"
+                    onChange={(e) => {
+                      const archivo = e.target.files?.[0] ?? null;
+                      setDocxGenerado(null);
+                      if (archivo && (!archivo.name.toLowerCase().endsWith(".docx") || archivo.size > 2_000_000)) {
+                        setFormato(null);
+                        setErrorFormato("Elige un archivo .docx de hasta 2 MB.");
+                        e.target.value = "";
+                        return;
+                      }
+                      setFormato(archivo);
+                      setErrorFormato("");
+                    }}
+                  />
+                  {formato && <p className="mt-1 text-[12px] text-muted">Formato seleccionado: {formato.name}</p>}
+                  {errorFormato && <p className="mt-1 text-[12px] text-danger">{errorFormato}</p>}
+                </div>
+              )}
+            </Field>
 
             <div className="mt-6 space-y-3 text-[13px]">
               <p className="eyebrow text-fg">Firma</p>
