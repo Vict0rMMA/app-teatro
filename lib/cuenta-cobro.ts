@@ -58,6 +58,11 @@ const minutos = (h: string): number => {
   }
 };
 const nombreMes = (mes: number) => MESES[mes - 1] ?? `mes ${mes}`;
+/** Minuto de fin; si la hora de fin es menor o igual que la de inicio, el evento terminó al día siguiente. */
+const finMin = (f: Fila) => {
+  const ini = minutos(f.hora_inicio), fin = minutos(f.hora_fin);
+  return fin <= ini ? fin + 24 * 60 : fin;
+};
 
 const fechaKey = (f: string) => f.split("/").reverse().join("");
 const pesos = (n: number) => `$ ${n.toLocaleString("es-CO", { maximumFractionDigits: 0 })}`;
@@ -86,9 +91,10 @@ export function validar(d: Extraccion): Validacion {
     const [, mm, aa] = f.fecha.split("/").map(Number);
     if (mm !== d.mes || aa !== d.anio) errores.push(`${n}: la fecha no es de ${nombreMes(d.mes)} ${d.anio}.`);
     try {
-      const dur = (toMin(f.hora_fin) - toMin(f.hora_inicio)) / 60;
-      if (dur <= 0) errores.push(`${n}: la hora fin es menor o igual a la de inicio.`);
-      else if (dur !== f.horas) errores.push(`${n}: ${f.hora_inicio}–${f.hora_fin} da ${dur} h, pero dice ${f.horas} h.`);
+      // Si termina a medianoche o después (ej. 18:30–00:00), la hora de fin es del día siguiente.
+      let dur = (toMin(f.hora_fin) - toMin(f.hora_inicio)) / 60;
+      if (dur <= 0) dur += 24;
+      if (dur !== f.horas) errores.push(`${n}: ${f.hora_inicio}–${f.hora_fin} da ${dur} h, pero dice ${f.horas} h.`);
     } catch (e) {
       errores.push(`${n}: ${(e as Error).message}`);
     }
@@ -107,7 +113,7 @@ export function validar(d: Extraccion): Validacion {
     if (h > MAX_HORAS_DIA) errores.push(`${dia}: suma ${h} h (máximo ${MAX_HORAS_DIA} h/día salvo evento autorizado).`);
     const orden = [...filas].sort((a, b) => minutos(a.hora_inicio) - minutos(b.hora_inicio));
     for (let i = 1; i < orden.length; i++) {
-      if (minutos(orden[i].hora_inicio) < minutos(orden[i - 1].hora_fin))
+      if (minutos(orden[i].hora_inicio) < finMin(orden[i - 1]))
         errores.push(`${dia}: se cruzan "${orden[i - 1].evento}" y "${orden[i].evento}".`);
     }
   }

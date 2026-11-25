@@ -67,6 +67,13 @@ describe("leerConsolidadoTexto (sin IA)", () => {
     expect(d.alertas[0].tipo).toBe("persona_no_encontrada");
   });
 
+  it("acepta eventos que terminan a medianoche o la cruzan", () => {
+    const t = [CAB, fila(ANA, "10/10/2026", "Función noche", "6:30 PM", "12:00 AM", 5.5), fila(ANA, "11/10/2026", "Montaje", "10:00 PM", "1:00 AM", 3)].join("\n");
+    const d = leerConsolidadoTexto(t, ANA)!;
+    expect(d.filas.map((f) => `${f.hora_inicio}-${f.hora_fin}`)).toEqual(["18:30-00:00", "22:00-01:00"]);
+    expect(validar(d).errores).toEqual([]);
+  });
+
   it("devuelve null si lo pegado no es la tabla (entonces se usa Gemini)", () => {
     expect(leerConsolidadoTexto("hola, esto no es una tabla", ANA)).toBeNull();
     expect(leerConsolidadoTexto("a\tb\tc", ANA)).toBeNull();

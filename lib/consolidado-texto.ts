@@ -163,7 +163,11 @@ export function leerConsolidadoTexto(texto: string, persona?: string): Extraccio
     const { _nombre, _cedula, ...fila } = f;
     void _nombre;
     void _cedula;
-    const dura = (a: string, b: string) => (aMin(b) - aMin(a)) / 60;
+    // Fin menor o igual que inicio = terminó al día siguiente (ej. 6:30 PM a 12:00 AM).
+    const dura = (a: string, b: string) => {
+      const h = (aMin(b) - aMin(a)) / 60;
+      return h <= 0 ? h + 24 : h;
+    };
     if (dura(fila.hora_inicio, fila.hora_fin) !== fila.horas) {
       const candidatos: Array<[string, string]> = [
         [fila.hora_inicio, cambiarAmPm(fila.hora_fin)],
