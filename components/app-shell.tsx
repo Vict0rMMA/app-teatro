@@ -13,7 +13,6 @@ const NAV = [
   { href: "/planillas", label: "Historial" },
   { href: "/horas", label: "Mis horas" },
   { href: "/cuenta-cobro", label: "Cuenta de cobro" },
-  { href: "/personal", label: "Personal" },
   { href: "/ajustes", label: "Ajustes" },
   { href: "/admin", label: "Administración", admin: true },
 ];
@@ -83,7 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [more, setMore] = useState(false);
   const isAdmin = !!user.email && user.email.toLocaleLowerCase("en-US") === process.env.NEXT_PUBLIC_ADMIN_EMAIL?.trim().toLocaleLowerCase("en-US");
   const nav = NAV.filter((n) => !n.admin || isAdmin);
-  const masActivo = ["/personal", "/ajustes", "/admin"].some((h) => isActive(pathname, h));
+  const masActivo = ["/ajustes", "/admin"].some((h) => isActive(pathname, h));
 
   useEffect(() => setMore(false), [pathname]);
 

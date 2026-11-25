@@ -2,7 +2,6 @@
 
 import {
   collection,
-  collectionGroup,
   deleteDoc,
   doc,
   getDocs,
@@ -224,10 +223,4 @@ export function watchEvent(id: string, cb: (e: EventDoc | null) => void, onError
 export async function getStaff(eventId: string, uid: string): Promise<StaffDoc[]> {
   const s = await getDocs(query(collection(db(), "events", eventId, "staff"), where("uid", "==", uid)));
   return s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<StaffDoc, "id">) })).sort((a, b) => a.orden - b.orden);
-}
-
-/** Todo el personal de todos los eventos del usuario (para la búsqueda por persona). */
-export async function getAllStaff(uid: string): Promise<StaffDoc[]> {
-  const s = await getDocs(query(collectionGroup(db(), "staff"), where("uid", "==", uid), orderBy("fecha", "desc")));
-  return s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<StaffDoc, "id">) }));
 }

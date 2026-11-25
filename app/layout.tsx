@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Actualizador } from "@/components/actualizador";
 import { AuthProvider } from "@/components/auth-provider";
 import { ServiceWorker } from "@/components/service-worker";
 import { themeScript } from "@/components/theme";
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>{children}</AuthProvider>
         </ToastProvider>
         <ServiceWorker />
+        <Actualizador />
       </body>
     </html>
   );
