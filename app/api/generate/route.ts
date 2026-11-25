@@ -25,8 +25,8 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   try {
     const user = await requireUser(req);
-    await requireSeccion(user, "planillas");
-    const form = await req.formData().catch(() => null);
+    // Permiso y lectura del archivo a la vez (no dependen entre sí).
+    const [, form] = await Promise.all([requireSeccion(user, "planillas"), req.formData().catch(() => null)]);
     if (!form) throw new HttpError(400, "Solicitud inválida.");
     const input = generateSchema.parse(JSON.parse(String(form.get("payload") ?? "{}")));
     await rateLimit(user.uid, "generate", 20, 60 * 60 * 1000);

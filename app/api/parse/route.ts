@@ -13,8 +13,7 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   try {
     const user = await requireUser(req);
-    await requireSeccion(user, "planillas");
-    await rateLimit(user.uid, "parse", 60, 60 * 60 * 1000);
+    await Promise.all([requireSeccion(user, "planillas"), rateLimit(user.uid, "parse", 60, 60 * 60 * 1000)]);
 
     const form = await req.formData().catch(() => null);
     const file = form?.get("file");

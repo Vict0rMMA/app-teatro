@@ -21,10 +21,9 @@ type Body = {
 export async function POST(req: Request) {
   try {
     const user = await requireUser(req);
-    await requireSeccion(user, "cobro");
+    const [, body] = (await Promise.all([requireSeccion(user, "cobro"), req.json().catch(() => null)])) as [void, Body | null];
     const pdf = new URL(req.url).searchParams.get("format") === "pdf";
     if (pdf && !process.env.GOTENBERG_URL) throw new HttpError(503, "La conversión a PDF requiere configurar Gotenberg en el servidor.", "PDF_NO_CONFIGURADO");
-    const body = (await req.json().catch(() => null)) as Body | null;
     const p = body?.persona;
     if (!body?.datos?.filas?.length || !p?.nombre?.trim() || !/^\d{5,12}$/.test(p.cedula ?? "") || !p.celular || !p.direccion || !p.ciudad)
       throw new HttpError(400, "Faltan datos: nombre, cédula, celular, dirección o ciudad.");

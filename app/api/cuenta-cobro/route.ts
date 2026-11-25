@@ -47,9 +47,7 @@ export async function POST(req: Request) {
   const inicio = Date.now();
   try {
     const user = await requireUser(req);
-    await requireSeccion(user, "cobro");
-
-    const body = (await req.json().catch(() => null)) as Body | null;
+    const [, body] = (await Promise.all([requireSeccion(user, "cobro"), req.json().catch(() => null)])) as [void, Body | null];
     if (!body) throw new HttpError(400, "Cuerpo inválido.");
 
     const texto = body.texto?.trim();

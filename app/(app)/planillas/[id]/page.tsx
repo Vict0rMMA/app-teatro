@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import PizZip from "pizzip";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/components/auth-provider";
 import { DocxPreview } from "@/components/docx-preview";
@@ -80,6 +79,7 @@ export default function PlanillaPage() {
         const { blob, name } = await fetchFile(id, "zip");
         if (!completo) return saveBlob(blob, name);
         // Reemplaza el registro regenerado por el completo que está en memoria.
+        const { default: PizZip } = await import("pizzip"); // solo se carga al descargar
         const zip = new PizZip(await blob.arrayBuffer());
         Object.keys(zip.files)
           .filter((n) => n.startsWith("REGISTRO_"))

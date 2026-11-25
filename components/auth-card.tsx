@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { EscenarioFondo, EscenarioTelon } from "./escenario";
 
 /**
- * Pantallas de acceso. Escritorio: columna de sala oscura (rojo solo de acento) a la izquierda y, a la derecha, un
+ * Pantallas de acceso. Escritorio: columna roja de terciopelo a la izquierda y, a la derecha, un
  * escenario: el telón se recoge a los lados, el foco enciende y el formulario queda bajo la luz en
  * una tarjeta de vidrio oscuro. En móvil el escenario ocupa toda la pantalla. Siempre oscuro.
  */
@@ -21,18 +21,17 @@ export function AuthCard({
 }) {
   return (
     <div className="grid min-h-dvh bg-bg lg:grid-cols-[minmax(360px,34%)_1fr]">
-      <aside className="relative hidden flex-col border-r border-white/[0.06] bg-[#0b0909] p-12 text-white lg:flex">
-        <span aria-hidden className="absolute inset-x-0 top-0 h-[3px] bg-[#c8201a]" />
+      <aside className="panel-terciopelo relative hidden flex-col p-12 text-white lg:flex">
         <Link href="/" className="w-fit rounded-ctl bg-white px-3 py-2">
           <Image src="/logo-teatro-udem.png" alt="Teatro Universidad de Medellín" width={252} height={80} className="h-14 w-auto" priority />
         </Link>
         <div className="mt-auto max-w-md">
-          <p className="text-[12px] uppercase tracking-[0.14em] text-white/50">Teatro Gabriel Obregón Botero</p>
-          <span aria-hidden className="mt-5 block h-[3px] w-10 bg-[#c8201a]" />
+          <p className="text-[12px] uppercase tracking-[0.14em] text-white/70">Teatro Gabriel Obregón Botero</p>
+          <span aria-hidden className="mt-5 block h-[2px] w-10 bg-white/70" />
           <p className="mt-5 text-[36px] font-bold leading-[1.1] tracking-tight">Antes de que suba el telón, la sala ya está lista.</p>
-          <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/60">Planillas, llaves, colillas y horas de los coordinadores de eventos.</p>
+          <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/80">Planillas, llaves, colillas y horas de los coordinadores de eventos.</p>
         </div>
-        <p className="mt-16 text-xs text-white/40">Universidad de Medellín</p>
+        <p className="mt-16 text-xs text-white/60">Universidad de Medellín</p>
       </aside>
 
       {/* La clase "dark" fija los colores oscuros solo dentro del escenario. */}
