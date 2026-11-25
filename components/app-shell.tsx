@@ -111,7 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
         <nav className="flex-1 px-3" aria-label="Secciones">
-          <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-[0.08em] text-faint">Menú</p>
+          <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.1em] text-faint">Menú</p>
           <ul className="space-y-0.5">
             {nav.map(({ href, label, icon: Icon, admin }) => {
               const active = isActive(pathname, href);
@@ -122,11 +122,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                     aria-current={active ? "page" : undefined}
                     className={cx(
                       "relative flex h-9 items-center gap-3 rounded-ctl px-3 text-[14px] transition-colors duration-100",
-                      active ? "bg-subtle font-bold text-fg" : "text-muted hover:bg-subtle/60 hover:text-fg",
+                      active ? "bg-subtle font-bold text-fg" : "font-bold text-fg/70 hover:bg-subtle/60 hover:text-fg",
                     )}
                   >
                     {active && <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-brand" />}
-                    <Icon width={17} height={17} className={active ? "text-brand" : ""} />
+                    <Icon width={17} height={17} strokeWidth={1.9} className={active ? "text-brand" : ""} />
                     {label}
                   </Link>
                 </li>
