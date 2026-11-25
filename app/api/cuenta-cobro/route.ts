@@ -9,7 +9,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+/**
+ * Modelos en orden. Si uno está saturado (503), sin cuota (429) o se demora, se pasa al siguiente.
+ * Los "lite" responden en 2–6 s; con tope por intento la ruta no pasa de los 60 s de Vercel.
+ */
+const MODELOS = [...new Set([process.env.GEMINI_MODEL, "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash"].filter(Boolean) as string[])];
+const TOPE_MS = [22_000, 15_000, 15_000];
 const TIPOS_IMAGEN = ["image/png", "image/jpeg", "image/webp"] as const;
 const MAX_IMAGEN_B64 = 7_000_000; // ~5 MB
 const MAX_TEXTO = 50_000;
@@ -61,26 +66,36 @@ export async function POST(req: Request) {
       ].join("\n\n"),
     });
 
-    let raw: string;
-    try {
-      const res = await new GoogleGenAI({ apiKey }).models.generateContent({
-        model: MODEL,
-        contents: [{ role: "user", parts }],
-        config: {
-          systemInstruction: SYSTEM_PROMPT,
-          responseMimeType: "application/json",
-          temperature: 0,
-        },
-      });
-      raw = res.text ?? "";
-      if (!raw) throw new Error(`Respuesta vacía (${res.candidates?.[0]?.finishReason ?? "sin motivo"}).`);
-    } catch (e) {
-      console.error("[cuenta-cobro]", e);
-      const status = (e as { status?: number }).status;
-      if (status === 400 || status === 401 || status === 403)
-        throw new HttpError(502, "Gemini rechazó la clave o el modelo. Revisa GEMINI_API_KEY y GEMINI_MODEL en Vercel.", "IA_CLAVE");
-      if (status === 429) throw new HttpError(429, "Se acabó la cuota de Gemini por ahora. Intenta en un rato.", "IA_CUOTA");
-      throw new HttpError(502, "No se pudo procesar el consolidado. Intenta con una imagen más nítida o pega el texto.", "IA");
+    const ai = new GoogleGenAI({ apiKey });
+    let raw = "";
+    let ultimoStatus: number | undefined;
+    for (const [i, model] of MODELOS.slice(0, 3).entries()) {
+      try {
+        const res = await ai.models.generateContent({
+          model,
+          contents: [{ role: "user", parts }],
+          config: {
+            systemInstruction: SYSTEM_PROMPT,
+            responseMimeType: "application/json",
+            temperature: 0,
+            abortSignal: AbortSignal.timeout(TOPE_MS[i] ?? 15_000),
+            httpOptions: { timeout: TOPE_MS[i] ?? 15_000 },
+          },
+        });
+        raw = res.text ?? "";
+        if (raw) break;
+        console.error("[cuenta-cobro] respuesta vacía", model, res.candidates?.[0]?.finishReason);
+      } catch (e) {
+        ultimoStatus = (e as { status?: number }).status;
+        console.error("[cuenta-cobro]", model, ultimoStatus ?? (e as Error).name);
+        if (ultimoStatus === 401 || ultimoStatus === 403)
+          throw new HttpError(502, "Gemini rechazó la clave. Revisa GEMINI_API_KEY en Vercel.", "IA_CLAVE");
+        // 503 saturado, 429 cuota, 404 modelo inexistente o tiempo agotado: probar el siguiente.
+      }
+    }
+    if (!raw) {
+      if (ultimoStatus === 429) throw new HttpError(429, "Se acabó la cuota de Gemini por ahora. Intenta en un rato.", "IA_CUOTA");
+      throw new HttpError(502, "Gemini está saturado o no respondió. Intenta de nuevo en un momento.", "IA");
     }
 
     let datos: Extraccion;
