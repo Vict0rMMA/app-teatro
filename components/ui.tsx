@@ -146,9 +146,9 @@ export function CardHeader({
   serif?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-4 pb-1 pt-4 sm:px-5">
+    <div className="mx-4 flex items-start justify-between gap-4 border-b border-border pb-3 pt-4 sm:mx-5">
       <div className="min-w-0">
-        <h2 className={serif ? "font-bold tracking-tight text-lg" : "eyebrow text-fg"}>{title}</h2>
+        <h2 className={serif ? "text-lg font-bold tracking-tight" : "text-[17px] font-bold leading-tight tracking-tight"}>{title}</h2>
         {description && <p className="mt-1 max-w-prose text-[13px] text-muted">{description}</p>}
       </div>
       {action}
@@ -237,7 +237,7 @@ export function PageHeader({
     <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
         {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
-        <h1 className="font-bold tracking-tight text-[28px] leading-[1.1] tracking-[-0.01em] sm:text-[32px]">{title}</h1>
+        <h1 className="font-bold tracking-tight text-[28px] leading-[1.1] sm:text-[32px]">{title}</h1>
         {description && <p className="mt-2 text-sm text-muted">{description}</p>}
       </div>
       {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}

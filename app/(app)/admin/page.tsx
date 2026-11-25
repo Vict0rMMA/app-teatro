@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/components/auth-provider";
-import { Badge, Button, EmptyState, PageHeader, Skeleton } from "@/components/ui";
+import { useToast } from "@/components/toast";
+import { Badge, Button, EmptyState, Modal, PageHeader, Skeleton, Stat, StatRow } from "@/components/ui";
 
 interface AccountRow {
   uid: string;
@@ -13,11 +14,22 @@ interface AccountRow {
   ultimoIngreso: string | null;
   ultimaActividad: string | null;
   deshabilitado: boolean;
+  acceso: string[];
+  perfilCompleto: boolean;
+  tieneFirma: boolean;
+}
+
+interface Resumen {
+  cuentas: number;
+  activas7d: number;
+  desactivadas: number;
+  planillasMes: number;
 }
 
 interface UsersResponse {
   users: AccountRow[];
   nextPageToken: string | null;
+  resumen?: Resumen;
   error?: string;
 }
 
@@ -57,6 +69,10 @@ export default function AdminPage() {
   const [ahora, setAhora] = useState(() => Date.now());
   const [actualizado, setActualizado] = useState<number | null>(null);
   const extra = useRef(false); // si se cargaron más páginas, el refresco automático no las borra
+  const toast = useToast();
+  const [resumen, setResumen] = useState<Resumen | null>(null);
+  const [cambiar, setCambiar] = useState<AccountRow | null>(null);
+  const [guardando, setGuardando] = useState(false);
 
   const load = useCallback(
     async (token?: string) => {
@@ -68,6 +84,7 @@ export default function AdminPage() {
         if (!res.ok) throw new Error(data.error || "No se pudo cargar la lista de cuentas.");
         setError("");
         setActualizado(Date.now());
+        if (!token && data.resumen) setResumen(data.resumen);
         setNextPageToken(data.nextPageToken);
         if (token) {
           extra.current = true;
@@ -108,6 +125,28 @@ export default function AdminPage() {
   const ordenadas = useMemo(() => [...(users ?? [])].sort((a, b) => ts(b.ultimaActividad) - ts(a.ultimaActividad)), [users]);
   const activos = ordenadas.filter((u) => ahora - ts(u.ultimaActividad) < ACTIVO_MS).length;
 
+  async function aplicarCambio() {
+    if (!cambiar) return;
+    setGuardando(true);
+    try {
+      const idToken = await user.getIdToken();
+      const r = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: cambiar.uid, deshabilitado: !cambiar.deshabilitado }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error ?? `Error ${r.status}`);
+      toast.success(cambiar.deshabilitado ? "Cuenta reactivada" : "Cuenta desactivada", cambiar.nombre);
+      setCambiar(null);
+      void load();
+    } catch (e) {
+      toast.error("No se pudo cambiar la cuenta", (e as Error).message);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   const contexto = users
     ? `${users.length} ${users.length === 1 ? "cuenta" : "cuentas"} · ${activos} ${activos === 1 ? "activa" : "activas"} en los últimos 10 min${actualizado ? ` · actualizado ${hace(new Date(actualizado).toISOString(), ahora).toLowerCase()}` : ""}`
     : "Cargando cuentas…";
@@ -139,21 +178,33 @@ export default function AdminPage() {
         </div>
       ) : (
         <>
+          {resumen && (
+            <StatRow className="mb-8">
+              <Stat label="Cuentas" value={resumen.cuentas} sub={resumen.desactivadas ? `${resumen.desactivadas} desactivada${resumen.desactivadas === 1 ? "" : "s"}` : "todas activas"} />
+              <Stat label="Activas" value={resumen.activas7d} sub="en los últimos 7 días" />
+              <Stat label="En línea" value={activos} sub="últimos 10 minutos" />
+              <Stat label="Planillas" value={resumen.planillasMes} sub="generadas este mes" />
+            </StatRow>
+          )}
           {error && <p className="mb-3 text-xs text-warn">No se pudo actualizar: {error} Se reintenta solo.</p>}
-          <div className="hidden border-b border-border px-2 pb-2 sm:grid sm:grid-cols-[minmax(0,1fr)_200px_180px] sm:gap-4">
+          <div className="hidden border-b border-border px-2 pb-2 sm:grid sm:grid-cols-[minmax(0,1fr)_170px_150px_110px] sm:gap-4">
             <span className="th">Cuenta</span>
             <span className="th">Última vez</span>
             <span className="th">Registro</span>
+            <span className="th text-right">Acción</span>
           </div>
           <ul className="divide-y divide-border border-b border-border">
             {ordenadas.map((account) => {
               const enLinea = ahora - ts(account.ultimaActividad) < ACTIVO_MS;
               return (
-                <li key={account.uid} className="grid gap-2 px-2 py-3 sm:grid-cols-[minmax(0,1fr)_200px_180px] sm:items-center sm:gap-4">
+                <li key={account.uid} className={`grid gap-2 px-2 py-3 sm:grid-cols-[minmax(0,1fr)_170px_150px_110px] sm:items-center sm:gap-4 ${account.deshabilitado ? "opacity-60" : ""}`}>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{account.nombre}</p>
                     <p className="truncate text-xs text-muted">{account.email || "Sin correo"}</p>
-                    <div className="mt-1 flex gap-3">
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                      <Badge>{account.acceso.join(" + ") || "Sin método"}</Badge>
+                      <Badge tone={account.perfilCompleto ? "ok" : "warn"}>{account.perfilCompleto ? "Perfil listo" : "Sin perfil"}</Badge>
+                      <Badge tone={account.tieneFirma ? "ok" : "neutral"}>{account.tieneFirma ? "Con firma" : "Sin firma"}</Badge>
                       {!account.emailVerificado && <Badge tone="warn">Correo sin verificar</Badge>}
                       {account.deshabilitado && <Badge tone="danger">Desactivada</Badge>}
                     </div>
@@ -170,6 +221,15 @@ export default function AdminPage() {
                     <span className="sm:hidden">Registro: </span>
                     {fechaHora(account.registradoEn)}
                   </p>
+                  <div className="sm:text-right">
+                    {account.uid === user.uid ? (
+                      <span className="text-xs text-muted">Tu cuenta</span>
+                    ) : (
+                      <Button size="sm" variant={account.deshabilitado ? "secondary" : "ghost"} onClick={() => setCambiar(account)}>
+                        {account.deshabilitado ? "Reactivar" : "Desactivar"}
+                      </Button>
+                    )}
+                  </div>
                 </li>
               );
             })}
@@ -194,6 +254,33 @@ export default function AdminPage() {
           )}
         </>
       )}
+      <Modal
+        open={!!cambiar}
+        onClose={() => !guardando && setCambiar(null)}
+        title={cambiar?.deshabilitado ? "Reactivar cuenta" : "Desactivar cuenta"}
+        footer={
+          <>
+            <Button onClick={() => setCambiar(null)} disabled={guardando}>
+              Cancelar
+            </Button>
+            <Button variant={cambiar?.deshabilitado ? "primary" : "danger"} loading={guardando} onClick={aplicarCambio}>
+              {cambiar?.deshabilitado ? "Reactivar" : "Desactivar"}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted">
+          {cambiar?.deshabilitado ? (
+            <>
+              <span className="font-medium text-fg">{cambiar?.nombre}</span> podrá volver a entrar a la app con su cuenta de siempre.
+            </>
+          ) : (
+            <>
+              <span className="font-medium text-fg">{cambiar?.nombre}</span> no podrá entrar a la app y se cerrarán sus sesiones abiertas. Sus datos no se borran: puedes reactivarla cuando quieras.
+            </>
+          )}
+        </p>
+      </Modal>
     </>
   );
 }

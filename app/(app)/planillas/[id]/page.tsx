@@ -190,7 +190,7 @@ export default function PlanillaPage() {
       <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <p className="eyebrow">Planilla</p>
-          <h1 className="mt-2 font-bold tracking-tight text-[28px] leading-[1.1] tracking-[-0.01em] sm:text-[34px]">{event.nombre}</h1>
+          <h1 className="mt-2 font-bold tracking-tight text-[28px] leading-[1.1] sm:text-[34px]">{event.nombre}</h1>
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted">
             <span>
               {fechaWhatsapp(event.fecha)} de {event.fecha.slice(0, 4)}
