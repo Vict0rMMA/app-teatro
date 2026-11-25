@@ -21,8 +21,7 @@ export default {
         danger: v("danger"),
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        serif: ["var(--font-serif)", "Georgia", "serif"],
+        sans: ["Arial", "\"Helvetica Neue\"", "Helvetica", "sans-serif"],
         mono: ["ui-monospace", "SFMono-Regular", "Consolas", "monospace"],
       },
       borderRadius: {

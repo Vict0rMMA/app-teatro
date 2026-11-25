@@ -12,7 +12,7 @@ import { horasDe, nuevaPersona, RegistroTable, type PersonaDraft } from "@/compo
 import { useToast } from "@/components/toast";
 import { Badge, Button, Card, Field, Input, Modal, Notice, PageHeader, Select, Textarea, cx } from "@/components/ui";
 import { apiFetch } from "@/lib/firebase/client";
-import { diffHoras, fechaWhatsapp, findBestNameMatch, formatCOP, hora12, isIsoDate, parseDuracion, formatDuracion } from "@/lib/format";
+import { diffHoras, fechaWhatsapp, findBestNameMatch, formatCOP, formatMiles, hora12, isIsoDate, parseDuracion, formatDuracion } from "@/lib/format";
 import { calcularRegistro, fromMin, HORAS_BASE, mensajeSupuestas, prepararPersonal, salidaSugerida, toMin } from "@/lib/registro/calculo";
 import type { Registro, StaffRow } from "@/lib/registro/types";
 import { guardarRegistro, base64ToBlob } from "@/lib/registro-memoria";
@@ -328,7 +328,7 @@ export default function NuevaPlanillaPage() {
         <ol className="mt-12 grid gap-6 border-t border-border pt-6 text-[13px] sm:grid-cols-4">
           {PASOS.map((p, i) => (
             <li key={p.id}>
-              <p className="tabular font-serif text-lg text-muted">{String(i + 1).padStart(2, "0")}</p>
+              <p className="tabular font-bold tracking-tight text-lg text-muted">{String(i + 1).padStart(2, "0")}</p>
               <p className="mt-1 font-medium">{p.label}</p>
               <p className="mt-0.5 text-muted">{p.desc}</p>
             </li>
@@ -359,11 +359,11 @@ export default function NuevaPlanillaPage() {
       </div>
       <div>
         <dt className="eyebrow">Horas</dt>
-        <dd className="tabular mt-0.5 font-serif text-2xl">{formatDuracion(calc.totalHoras)}</dd>
+        <dd className="tabular mt-0.5 font-bold tracking-tight text-2xl">{formatDuracion(calc.totalHoras)}</dd>
       </div>
       <div>
         <dt className="eyebrow">Total a pagar</dt>
-        <dd className="tabular mt-0.5 font-serif text-2xl">{formatCOP(calc.totalValor)}</dd>
+        <dd className="tabular mt-0.5 font-bold tracking-tight text-2xl">{formatCOP(calc.totalValor)}</dd>
       </div>
       <div>
         <dt className="eyebrow">Advertencias</dt>
@@ -401,7 +401,7 @@ export default function NuevaPlanillaPage() {
                   paso === p.id ? "text-fg" : "text-muted hover:text-fg",
                 )}
               >
-                <span className={cx("tabular font-serif text-[15px]", hechos[i] ? "text-ok" : paso === p.id ? "text-brand" : "text-faint")}>{i + 1}</span>
+                <span className={cx("tabular font-bold tracking-tight text-[15px]", hechos[i] ? "text-ok" : paso === p.id ? "text-brand" : "text-faint")}>{i + 1}</span>
                 <span className={paso === p.id ? "font-medium" : undefined}>{p.label}</span>
                 {paso === p.id && <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 bg-brand" />}
               </a>
@@ -591,7 +591,7 @@ export default function NuevaPlanillaPage() {
                                 <Input inputMode="numeric" className="tabular h-8 sm:h-8" value={l.boletas} onChange={(e) => setL({ boletas: e.target.value.replace(/\D/g, "") })} aria-label={`Boletas ${label}`} />
                               </td>
                               <td className="py-1.5 pr-2">
-                                <Input inputMode="numeric" className="tabular h-8 sm:h-8" value={l.valor} onChange={(e) => setL({ valor: e.target.value.replace(/\D/g, "") })} placeholder="$" aria-label={`Valor ${label}`} />
+                                <Input inputMode="numeric" className="tabular h-8 sm:h-8" value={l.valor} onChange={(e) => setL({ valor: formatMiles(e.target.value) })} placeholder="$" aria-label={`Valor ${label}`} />
                               </td>
                               <td className="tabular py-1.5 text-right">{b != null && v != null ? formatCOP(b * v) : "—"}</td>
                               <td className="py-1.5 pl-3">
@@ -711,7 +711,7 @@ export default function NuevaPlanillaPage() {
                         <Field label="Horas">
                           {(id) => <Input id={id} inputMode="decimal" value={mine.horas} placeholder={String(diffHoras(mine.llegada || null, mine.salida || null) ?? "")} onChange={(e) => setM({ horas: e.target.value })} />}
                         </Field>
-                        <Field label="Valor">{(id) => <Input id={id} inputMode="numeric" value={mine.valor} onChange={(e) => setM({ valor: e.target.value.replace(/\D/g, "") })} />}</Field>
+                        <Field label="Valor">{(id) => <Input id={id} inputMode="numeric" value={mine.valor} placeholder="10.000" onChange={(e) => setM({ valor: formatMiles(e.target.value) })} />}</Field>
                       </div>
                     )}
                   </div>
@@ -739,7 +739,7 @@ export default function NuevaPlanillaPage() {
       <div className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-bg/95 px-4 py-3 backdrop-blur md:bottom-0 md:left-[208px] xl:hidden">
         <div className="mx-auto flex max-w-[1080px] items-center justify-between gap-4 sm:px-4">
           <div className="min-w-0">
-            <p className="tabular truncate font-serif text-lg leading-tight">{formatCOP(calc.totalValor)}</p>
+            <p className="tabular truncate font-bold tracking-tight text-lg leading-tight">{formatCOP(calc.totalValor)}</p>
             <p className="tabular truncate text-[12px] text-muted">
               {formatDuracion(calc.totalHoras)} · {draft.personas.length} personas{nAvisos ? ` · ${nAvisos} por revisar` : ""}
             </p>
@@ -784,9 +784,9 @@ function Paso({ id, n, title, description, children }: { id: string; n: number; 
   return (
     <section id={id} className={cx("scroll-mt-32 pb-10", n > 1 && "border-t border-border pt-8")}>
       <div className="mb-5 flex gap-4">
-        <span className="tabular w-6 shrink-0 pt-0.5 font-serif text-[22px] leading-none text-brand">{n}</span>
+        <span className="tabular w-6 shrink-0 pt-0.5 font-bold tracking-tight text-[22px] leading-none text-brand">{n}</span>
         <div className="min-w-0">
-          <h2 className="font-serif text-[22px] font-medium leading-none">{title}</h2>
+          <h2 className="font-bold tracking-tight text-[22px] leading-none">{title}</h2>
           {description && <p className="mt-2 max-w-prose text-[13px] text-muted">{description}</p>}
         </div>
       </div>

@@ -56,12 +56,12 @@ export function Dropzone({
       )}
     >
       {busy ? (
-        <p className="flex items-center gap-3 font-serif text-2xl">
+        <p className="flex items-center gap-3 font-bold tracking-tight text-2xl">
           <Spinner className="h-5 w-5 text-brand" /> {busyLabel ?? "Procesando…"}
         </p>
       ) : (
         <div>
-          <p className="font-serif text-[26px] leading-tight sm:text-[32px]">{over ? "Suéltalo aquí" : "Arrastra el registro del evento"}</p>
+          <p className="font-bold tracking-tight text-[26px] leading-tight sm:text-[32px]">{over ? "Suéltalo aquí" : "Arrastra el registro del evento"}</p>
           <p className="mt-2 text-sm text-muted">
             o <span className="font-medium text-brand underline decoration-brand/40 underline-offset-4">elige el archivo</span> en tu equipo
           </p>

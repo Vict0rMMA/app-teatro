@@ -11,6 +11,7 @@ import { useToast } from "@/components/toast";
 import { Button, Card, CardHeader, Field, Input, Modal, PageHeader, Textarea } from "@/components/ui";
 import { addPlace, deletePlace, placeInUse, renamePlace, setFirma, updateProfile } from "@/lib/data";
 import { apiFetch, apiJson } from "@/lib/firebase/client";
+import { formatMiles } from "@/lib/format";
 import { withDefaults, type Defaults } from "@/lib/schemas";
 
 export default function AjustesPage() {
@@ -118,7 +119,8 @@ function DefaultsCard() {
               id={id}
               inputMode="numeric"
               className="tabular sm:w-48"
-              value={d.valorHora ? String(d.valorHora) : ""}
+              value={formatMiles(d.valorHora || "")}
+              placeholder="10.000"
               onChange={(e) => setD({ ...d, valorHora: Number(e.target.value.replace(/\D/g, "")) || 0 })}
             />
           )}

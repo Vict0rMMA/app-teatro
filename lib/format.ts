@@ -153,6 +153,12 @@ export function formatCOP(n: number | null | undefined): string {
   return "$" + Math.round(n).toLocaleString("es-CO");
 }
 
+/** Para campos de plata mientras se escribe: "10000" → "10.000". Deja solo dígitos. */
+export function formatMiles(texto: string | number | null | undefined): string {
+  const digitos = String(texto ?? "").replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  return digitos ? Number(digitos).toLocaleString("es-CO") : "";
+}
+
 /**
  * Lee una duración en horas: "5", "5,5", "5.5", "5:30", "5h30", "5 h 30 min", "30 min".
  * Devuelve horas con decimales (5:30 → 5,5) o null si no se entiende.

@@ -2,43 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
- * Papel hueso cálido y burdeos de telón. Contraste AA en texto (muted y faint sobre bg).
- * Los valores son "R G B" para poder usar opacidad: bg-brand/10.
- */
+/* Rojo institucional y grises neutros. Valores "R G B" para usar opacidad: bg-brand/10. */
 :root {
-  --bg: 250 247 242; /* #FAF7F2 */
-  --surface: 255 253 249; /* #FFFDF9 */
-  --subtle: 242 237 229; /* #F2EDE5 */
-  --border: 231 224 213; /* #E7E0D5 */
-  --fg: 28 25 23; /* #1C1917 */
-  --muted: 107 99 90; /* #6B635A */
-  --faint: 119 111 102; /* #776F66 */
-  --brand: 161 29 42; /* #A11D2A */
-  --brand-hover: 134 23 34; /* #861722 */
+  --bg: 250 250 250;
+  --surface: 255 255 255;
+  --subtle: 244 244 245;
+  --border: 228 228 231;
+  --fg: 24 24 27;
+  --muted: 82 82 91;
+  --faint: 113 113 122;
+  --brand: 200 32 26; /* rojo UdeM #C8201A */
+  --brand-hover: 172 26 21;
   --brand-fg: 255 255 255;
-  --brand-soft: 246 228 228; /* #F6E4E4 */
-  --ok: 74 107 58; /* verde musgo #4A6B3A */
-  --warn: 150 101 14; /* ocre #96650E */
-  --danger: 180 35 24; /* #B42318 */
+  --brand-soft: 254 236 235;
+  --ok: 22 128 61;
+  --warn: 161 98 7;
+  --danger: 185 28 28;
   color-scheme: light;
 }
 
 .dark {
-  --bg: 18 16 14; /* #12100E */
-  --surface: 26 23 20; /* #1A1714 */
-  --subtle: 35 31 27;
-  --border: 43 38 34; /* #2B2622 */
-  --fg: 239 233 225; /* #EFE9E1 */
-  --muted: 167 158 147;
-  --faint: 138 129 119;
-  --brand: 212 67 79; /* #D4434F */
-  --brand-hover: 226 92 103;
+  --bg: 10 10 11;
+  --surface: 19 19 21;
+  --subtle: 28 28 31;
+  --border: 39 39 43;
+  --fg: 237 237 239;
+  --muted: 161 161 170;
+  --faint: 125 125 135;
+  --brand: 232 60 52;
+  --brand-hover: 240 85 78;
   --brand-fg: 255 255 255;
-  --brand-soft: 58 26 28;
-  --ok: 143 178 122;
-  --warn: 217 164 65;
-  --danger: 229 88 79;
+  --brand-soft: 60 18 16;
+  --ok: 74 200 120;
+  --warn: 230 170 60;
+  --danger: 240 90 80;
   color-scheme: dark;
 }
 
@@ -82,29 +79,78 @@
   .th {
     @apply py-2 text-[11px] font-medium uppercase tracking-[0.06em] text-muted;
   }
-  /* Grano de papel, muy tenue (≤ 6 %). */
-  .grain {
-    position: relative;
-    isolation: isolate;
+}
+
+/*
+ * Reflector del login: un haz que barre despacio el escenario y un círculo de luz en el piso.
+ * Muy tenue; con prefers-reduced-motion se queda quieto (regla global de abajo).
+ */
+:root {
+  --luz: 150 70 40; /* luz cálida sobre papel */
+  --luz-a: 0.09;
+}
+.dark {
+  --luz: 255 226 180;
+  --luz-a: 0.11;
+}
+.escenario {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.foco {
+  position: absolute;
+  top: -8%;
+  right: 14%;
+  width: 640px;
+  height: 108%;
+  transform-origin: 50% 0;
+  background: conic-gradient(
+    from 162deg at 50% 0%,
+    transparent 0deg,
+    rgb(var(--luz) / calc(var(--luz-a) * 0.6)) 12deg,
+    rgb(var(--luz) / var(--luz-a)) 18deg,
+    rgb(var(--luz) / calc(var(--luz-a) * 0.6)) 24deg,
+    transparent 36deg
+  );
+  filter: blur(6px);
+  animation: foco 11s ease-in-out infinite alternate;
+}
+.foco-piso {
+  position: absolute;
+  bottom: 9%;
+  right: calc(14% + 140px);
+  width: 360px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(var(--luz) / calc(var(--luz-a) * 1.6)), transparent);
+  filter: blur(4px);
+  animation: foco-piso 11s ease-in-out infinite alternate;
+}
+.foco-piso::after {
+  /* línea del borde del escenario */
+  content: "";
+  position: absolute;
+  left: -60vw;
+  right: -60vw;
+  top: 50%;
+  border-top: 1px solid rgb(var(--fg) / 0.06);
+}
+@keyframes foco {
+  from {
+    transform: rotate(-13deg);
   }
-  .grain::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    opacity: 0.05;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  to {
+    transform: rotate(13deg);
   }
-  /* Pliegues de telón: franjas verticales casi invisibles. */
-  .telon {
-    background-image: repeating-linear-gradient(
-      90deg,
-      rgb(0 0 0 / 0.06) 0 2px,
-      transparent 2px 38px,
-      rgb(255 255 255 / 0.04) 38px 40px,
-      transparent 40px 64px
-    );
+}
+@keyframes foco-piso {
+  from {
+    transform: translateX(-210px) scaleX(0.92);
+  }
+  to {
+    transform: translateX(210px) scaleX(1.05);
   }
 }
 

@@ -155,7 +155,7 @@ export default function PlanillaPage() {
       <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <p className="eyebrow">Planilla</p>
-          <h1 className="mt-2 font-serif text-[28px] font-medium leading-[1.1] tracking-[-0.01em] sm:text-[34px]">{event.nombre}</h1>
+          <h1 className="mt-2 font-bold tracking-tight text-[28px] leading-[1.1] tracking-[-0.01em] sm:text-[34px]">{event.nombre}</h1>
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted">
             <span>
               {fechaWhatsapp(event.fecha)} de {event.fecha.slice(0, 4)}
@@ -203,7 +203,7 @@ export default function PlanillaPage() {
         ].map((k, i) => (
           <div key={k.label} className={cx("min-w-0 py-5", i % 2 === 1 ? "border-l border-border pl-5" : "pr-5", i >= 2 && "border-t border-border lg:border-t-0", i === 2 && "lg:border-l lg:pl-5")}>
             <p className="eyebrow">{k.label}</p>
-            <p className="tabular mt-1 font-serif text-[26px] leading-tight">{k.value}</p>
+            <p className="tabular mt-1 font-bold tracking-tight text-[26px] leading-tight">{k.value}</p>
             <p className="mt-1 truncate text-xs text-muted">{k.sub}</p>
           </div>
         ))}
@@ -213,7 +213,7 @@ export default function PlanillaPage() {
         <div className="min-w-0 space-y-8">
           {/* Archivos */}
           <section>
-            <h2 className="mb-4 font-serif text-xl font-medium">Archivos</h2>
+            <h2 className="mb-4 font-bold tracking-tight text-xl">Archivos</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               {FILES.map((f) => (
                 <div
@@ -240,7 +240,7 @@ export default function PlanillaPage() {
                     </span>
                   </button>
                   <div className="flex min-w-0 flex-1 flex-col">
-                      <p className={cx("text-sm font-medium", f.key === "registro" && "font-serif text-xl")}>{f.key === "registro" ? "REGISTRO" : f.label}</p>
+                      <p className={cx("text-sm font-medium", f.key === "registro" && "font-bold tracking-tight text-xl")}>{f.key === "registro" ? "REGISTRO" : f.label}</p>
                     <p className={cx("text-xs text-muted", f.key === "registro" && "text-[13px]")}>{f.key === "registro" ? "Documento base: personal, horas y pagos." : f.desc}</p>
                     {f.key === "registro" && <p className="mt-1 text-xs text-muted">Las demás planillas se preparan con los datos de este registro.</p>}
                     {f.key === "registro" && (
@@ -272,7 +272,7 @@ export default function PlanillaPage() {
           {/* Personal */}
           <section>
             <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="font-serif text-xl font-medium">Personal del evento</h2>
+              <h2 className="font-bold tracking-tight text-xl">Personal del evento</h2>
               {staff && staff.length > 0 && <span className="text-xs text-muted">{staff.length} personas</span>}
             </div>
             {staff === null ? (
@@ -320,7 +320,7 @@ export default function PlanillaPage() {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-border font-serif text-[16px]">
+                    <tr className="border-t border-border font-bold tracking-tight text-[16px]">
                       <td className="py-3 pl-4" colSpan={4}>
                         Total
                       </td>

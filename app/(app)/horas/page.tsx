@@ -9,7 +9,7 @@ import { useToast } from "@/components/toast";
 import { Badge, Button, Field, Input, Modal, Notice, Select, Skeleton, cx } from "@/components/ui";
 import { COLOR_DIA, estadoDia, mensajeDia } from "@/lib/registros";
 import { deleteWorkLog, saveWorkLog, watchWorkLogs, type WorkLog } from "@/lib/data";
-import { DIAS, MESES, formatCOP, hora12, normalize, formatDuracion } from "@/lib/format";
+import { DIAS, MESES, formatCOP, formatMiles, hora12, normalize, formatDuracion } from "@/lib/format";
 
 interface FormState {
   id?: string;
@@ -39,10 +39,7 @@ function nombreLugar(nombre: string) {
   return nombre.toLocaleLowerCase("es") === "otro" ? "OPC" : nombre;
 }
 
-function formatearNumero(texto: string) {
-  const digitos = texto.replace(/\D/g, "");
-  return digitos ? Number(digitos).toLocaleString("es-CO") : "";
-}
+const formatearNumero = formatMiles;
 
 function llegadaCalculada(salida: string, horasTexto: string) {
   const horas = Number(horasTexto);
@@ -215,7 +212,7 @@ export default function HorasPage() {
             <button onClick={() => moveMonth(-1)} className="-ml-2 grid h-9 w-9 place-items-center rounded-ctl text-muted hover:bg-subtle hover:text-fg" aria-label="Mes anterior">
               <IconChevron className="rotate-180" />
             </button>
-            <h1 className="min-w-[200px] font-serif text-[28px] font-medium leading-tight sm:text-[32px]">
+            <h1 className="min-w-[200px] font-bold tracking-tight text-[28px] leading-tight sm:text-[32px]">
               {MESES[ym.m]} {ym.y}
             </h1>
             <button onClick={() => moveMonth(1)} className="grid h-9 w-9 place-items-center rounded-ctl text-muted hover:bg-subtle hover:text-fg" aria-label="Mes siguiente">
@@ -252,7 +249,7 @@ export default function HorasPage() {
         ].map((k, i) => (
           <div key={k.label} className={cx("py-5", i % 2 === 1 ? "border-l border-border pl-5" : "pr-5", i >= 2 && "border-t border-border lg:border-t-0", i === 2 && "lg:border-l lg:pl-5")}>
             <p className="eyebrow">{k.label}</p>
-            <p className="tabular mt-1 font-serif text-[28px] leading-tight">{k.value}</p>
+            <p className="tabular mt-1 font-bold tracking-tight text-[28px] leading-tight">{k.value}</p>
             <p className="mt-1 text-xs text-muted">{k.sub}</p>
           </div>
         ))}
@@ -262,7 +259,7 @@ export default function HorasPage() {
         {/* Turnos */}
         <section className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <h2 className="w-full font-serif text-xl font-medium sm:mr-auto sm:w-auto">Turnos</h2>
+            <h2 className="w-full font-bold tracking-tight text-xl sm:mr-auto sm:w-auto">Turnos</h2>
             <div className="w-full sm:w-52">
             <Select className="h-8 text-[13px]" value={lugar} onChange={(e) => setLugar(e.target.value)} aria-label="Filtrar por lugar">
               <option value="">Todos los lugares</option>
@@ -282,7 +279,7 @@ export default function HorasPage() {
             <Skeleton className="h-40 w-full" />
           ) : delMes.length === 0 ? (
             <div className="border-y border-border px-6 py-10 text-center">
-              <p className="font-serif text-lg">Sin turnos en {MESES[ym.m].toLowerCase()}</p>
+              <p className="font-bold tracking-tight text-lg">Sin turnos en {MESES[ym.m].toLowerCase()}</p>
               <p className="mt-1 text-[13px] text-muted">Se agregan solos al generar una planilla, o escríbelos a mano.</p>
               <button onClick={() => openNew()} className="mt-3 text-[13px] font-medium text-brand underline-offset-2 hover:underline">
                 Agregar un turno
@@ -297,7 +294,7 @@ export default function HorasPage() {
                   <li key={l.id} className="group flex items-center gap-4 px-1 py-3 transition-colors duration-100 hover:bg-subtle/40 sm:px-2">
                     <div className="w-11 shrink-0 text-center">
                       <p className="text-[11px] uppercase tracking-[0.06em] text-muted">{DIAS[d.getDay()].slice(0, 3)}</p>
-                      <p className={cx("tabular font-serif text-[22px] leading-none", diaEstado === "excedido" && "text-danger")}>{d.getDate()}</p>
+                      <p className={cx("tabular font-bold tracking-tight text-[22px] leading-none", diaEstado === "excedido" && "text-danger")}>{d.getDate()}</p>
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">

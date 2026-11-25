@@ -161,7 +161,7 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
     <div>
       {/* 1 · Consolidado */}
       <section className="pb-10">
-        <h2 className="font-serif text-[22px] font-medium">Consolidado</h2>
+        <h2 className="font-bold tracking-tight text-[22px]">Consolidado</h2>
         <p className="mt-1 max-w-prose text-[13px] text-muted">
           Pega las filas del Excel o una captura (Ctrl+V), o sube una foto. La cuenta se arma solo con esto.
         </p>
@@ -183,7 +183,7 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
               // eslint-disable-next-line @next/next/no-img-element
               <img src={imagen.preview} alt="Captura del consolidado" className="max-h-56 w-full object-contain" />
             ) : (
-              <p className="font-serif text-xl leading-snug">Pega una captura o elige una foto del Excel</p>
+              <p className="font-bold tracking-tight text-xl leading-snug">Pega una captura o elige una foto del Excel</p>
             )}
             <span className="mt-4 flex items-center justify-between text-[12px] uppercase tracking-[0.06em] text-muted">
               <span>.png · .jpg · .webp</span>
@@ -223,7 +223,7 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
         <>
           {/* 2 · Revisión */}
           <section className="border-t border-border pb-10 pt-8">
-            <h2 className="font-serif text-[22px] font-medium">Revisión</h2>
+            <h2 className="font-bold tracking-tight text-[22px]">Revisión</h2>
             <dl className="mt-5 grid grid-cols-2 gap-y-5 border-y border-border py-5 lg:grid-cols-4 lg:divide-x lg:divide-border">
               {(
                 [
@@ -235,7 +235,7 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
               ).map(([k, val], i) => (
                 <div key={k} className={cx("min-w-0", i > 0 && "lg:pl-6")}>
                   <dt className="eyebrow">{k}</dt>
-                  <dd className={cx("tabular mt-1 truncate", i === 0 ? "pt-1 text-sm font-medium" : "font-serif text-[26px] leading-tight")}>{val}</dd>
+                  <dd className={cx("tabular mt-1 truncate", i === 0 ? "pt-1 text-sm font-medium" : "font-bold tracking-tight text-[26px] leading-tight")}>{val}</dd>
                 </div>
               ))}
             </dl>
@@ -309,8 +309,8 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
                     <td className="px-3 py-3 text-muted" colSpan={8}>
                       Total · {v.grupos.length} centros de costos
                     </td>
-                    <td className="tabular px-3 py-3 text-right font-serif text-[17px]">{v.totalHoras}</td>
-                    <td className="tabular whitespace-nowrap px-3 py-3 text-right font-serif text-[17px]">{pesos(v.totalValor)}</td>
+                    <td className="tabular px-3 py-3 text-right font-bold tracking-tight text-[17px]">{v.totalHoras}</td>
+                    <td className="tabular whitespace-nowrap px-3 py-3 text-right font-bold tracking-tight text-[17px]">{pesos(v.totalValor)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -319,7 +319,7 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
 
           {/* 3 · Comparación con Mis horas */}
           <section className="border-t border-border pb-10 pt-8">
-            <h2 className="font-serif text-[22px] font-medium">Consolidado vs. Mis horas</h2>
+            <h2 className="font-bold tracking-tight text-[22px]">Consolidado vs. Mis horas</h2>
             <p className="mt-1 max-w-prose text-[13px] text-muted">
               Solo para que compares. La cuenta siempre lleva lo del consolidado; tus registros no cambian ninguna fila, hora ni valor.
             </p>
@@ -376,7 +376,7 @@ export default function CuentaCobro({ registros }: { registros: RegistroPersonal
 
           {/* 4 · Datos y Word */}
           <section className="border-t border-border pb-6 pt-8">
-            <h2 className="font-serif text-[22px] font-medium">Tus datos y el Word</h2>
+            <h2 className="font-bold tracking-tight text-[22px]">Tus datos y el Word</h2>
             <p className="mt-1 max-w-prose text-[13px] text-muted">Se usan solo para llenar el documento; no se guardan.</p>
             <div className="mt-5 grid gap-4 md:grid-cols-3">
               <Field label="Celular">{(id) => <Input id={id} inputMode="tel" autoComplete="tel" value={datos.celular} onChange={(e) => setDatos({ ...datos, celular: e.target.value })} />}</Field>

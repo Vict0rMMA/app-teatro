@@ -185,9 +185,9 @@ export function RegistroTable({
                 <td colSpan={4} className="py-3 pl-4 text-muted sm:pl-2">
                   Total · {rows.length} {rows.length === 1 ? "persona" : "personas"}
                 </td>
-                <td className="tabular whitespace-nowrap py-3 pl-2 font-serif text-[17px]">{formatDuracion(totals.horas)}</td>
+                <td className="tabular whitespace-nowrap py-3 pl-2 font-bold tracking-tight text-[17px]">{formatDuracion(totals.horas)}</td>
                 <td colSpan={2} />
-                <td className="tabular whitespace-nowrap py-3 pr-1 text-right font-serif text-[17px]">{formatCOP(totals.valor)}</td>
+                <td className="tabular whitespace-nowrap py-3 pr-1 text-right font-bold tracking-tight text-[17px]">{formatCOP(totals.valor)}</td>
                 <td colSpan={4} />
               </tr>
             </tfoot>

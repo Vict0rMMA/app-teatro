@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Menú "Más" (móvil) */}
       {more && (
         <div className="fixed inset-0 z-30 md:hidden" onClick={() => setMore(false)}>
-          <div className="absolute inset-0 bg-[#1C1917]/30" />
+          <div className="absolute inset-0 bg-[#09090b]/30" />
           <div
             className="absolute inset-x-3 bottom-[calc(72px+env(safe-area-inset-bottom))] animate-dialog-in rounded-box border border-border bg-surface p-2 shadow-pop"
             onClick={(e) => e.stopPropagation()}

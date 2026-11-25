@@ -145,7 +145,7 @@ export function CardHeader({
   return (
     <div className="flex items-start justify-between gap-4 px-4 pb-1 pt-4 sm:px-5">
       <div className="min-w-0">
-        <h2 className={serif ? "font-serif text-lg font-medium" : "eyebrow text-fg"}>{title}</h2>
+        <h2 className={serif ? "font-bold tracking-tight text-lg" : "eyebrow text-fg"}>{title}</h2>
         {description && <p className="mt-1 max-w-prose text-[13px] text-muted">{description}</p>}
       </div>
       {action}
@@ -173,7 +173,7 @@ export function Section({
     <section className={cx(!first && "border-t border-border pt-6", "pb-8", className)}>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h2 className="font-serif text-xl font-medium leading-tight">{title}</h2>
+          <h2 className="font-bold tracking-tight text-xl leading-tight">{title}</h2>
           {description && <p className="mt-1 max-w-prose text-[13px] text-muted">{description}</p>}
         </div>
         {action && <div className="shrink-0">{action}</div>}
@@ -201,7 +201,7 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
 export function EmptyState({ title, description, action }: { icon?: ReactNode; title: string; description: string; action?: ReactNode }) {
   return (
     <div className="px-6 py-12 text-center">
-      <p className="font-serif text-lg">{title}</p>
+      <p className="font-bold tracking-tight text-lg">{title}</p>
       <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted">{description}</p>
       {action && <div className="mt-5">{action}</div>}
     </div>
@@ -234,7 +234,7 @@ export function PageHeader({
     <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
         {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
-        <h1 className="font-serif text-[28px] font-medium leading-[1.1] tracking-[-0.01em] sm:text-[32px]">{title}</h1>
+        <h1 className="font-bold tracking-tight text-[28px] leading-[1.1] tracking-[-0.01em] sm:text-[32px]">{title}</h1>
         {description && <p className="mt-2 text-sm text-muted">{description}</p>}
       </div>
       {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}
@@ -270,7 +270,7 @@ export function Modal({
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
       className={cx(
-        "m-auto w-[calc(100%-24px)] rounded-box border border-border bg-surface p-0 text-fg shadow-pop backdrop:bg-[#1C1917]/45",
+        "m-auto w-[calc(100%-24px)] rounded-box border border-border bg-surface p-0 text-fg shadow-pop backdrop:bg-[#09090b]/45",
         "open:animate-dialog-in",
         wide ? "max-w-5xl" : "max-w-md",
       )}
@@ -278,7 +278,7 @@ export function Modal({
       {open && (
         <div className="flex max-h-[85dvh] flex-col">
           <div className="flex items-center justify-between px-5 pb-2 pt-4">
-            <h2 className="font-serif text-lg font-medium">{title}</h2>
+            <h2 className="font-bold tracking-tight text-lg">{title}</h2>
             <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-ctl text-muted hover:bg-subtle hover:text-fg" aria-label="Cerrar">
               <IconX />
             </button>
@@ -296,7 +296,7 @@ export function Stat({ label, value, sub, className }: { label: string; value: R
   return (
     <div className={className}>
       <p className="eyebrow">{label}</p>
-      <p className="tabular mt-1 font-serif text-[26px] leading-tight">{value}</p>
+      <p className="tabular mt-1 font-bold tracking-tight text-[26px] leading-tight">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
     </div>
   );
