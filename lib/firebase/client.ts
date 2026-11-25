@@ -11,11 +11,28 @@ import {
   type Firestore,
 } from "firebase/firestore";
 
+/**
+ * Dominio por el que pasa el inicio de sesión con Google. Por defecto, el de Firebase
+ * (<proyecto>.firebaseapp.com). En PRUEBA: si este navegador abrió /login?probar-login=1, pasa por el
+ * dominio de la app (/__/auth por proxy, next.config.mjs) para que Google muestre ese dominio.
+ * /login?probar-login=0 lo apaga. Solo afecta a ese navegador.
+ */
+function dominioDeLogin(): string {
+  const firebase = `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com`;
+  if (typeof window === "undefined") return firebase;
+  try {
+    const p = new URLSearchParams(window.location.search).get("probar-login");
+    if (p === "1") localStorage.setItem("probar-login", "1");
+    if (p === "0") localStorage.removeItem("probar-login");
+    return localStorage.getItem("probar-login") === "1" ? window.location.host : firebase;
+  } catch {
+    return firebase;
+  }
+}
+
 const config = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  // Inicio de sesión por el dominio de Firebase. El intento de usar el dominio de la app
-  // (/__/auth por proxy) dejaba la ventana de Google en blanco; queda en revisión.
-  authDomain: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  authDomain: dominioDeLogin(),
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
