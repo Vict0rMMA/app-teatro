@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useSession } from "@/components/auth-provider";
 import { Dropzone } from "@/components/dropzone";
 import { FirmaEditor } from "@/components/firma/firma-editor";
 import { usePlaces } from "@/components/hooks";
-import { IconPencil, IconPlus, IconTrash, IconUsers, IconX } from "@/components/icons";
+import { IconPencil, IconPlus, IconTrash, IconX } from "@/components/icons";
 import { horasDe, nuevaPersona, RegistroTable, type PersonaDraft } from "@/components/registro-table";
 import { useToast } from "@/components/toast";
 import { Badge, Button, Card, Field, Input, Modal, Notice, PageHeader, Select, Textarea, cx } from "@/components/ui";
@@ -415,8 +416,8 @@ export default function NuevaPlanillaPage() {
           role="status"
           aria-live="polite"
         >
-          <span aria-hidden className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand/10 text-brand">
-            <IconUsers width={17} height={17} />
+          <span className="animate-aviso-luz mt-0.5 grid h-10 w-[112px] shrink-0 place-items-center rounded-ctl bg-white px-2 py-1.5">
+            <Image src="/logo-teatro-udem.png" alt="Teatro Universidad de Medellín" width={200} height={60} className="h-auto w-full" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">¿Este evento tuvo seguidor?</p>

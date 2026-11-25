@@ -38,6 +38,10 @@ export default {
         puntos: { "0%, 80%, 100%": { opacity: "0.25" }, "40%": { opacity: "1" } },
         barra: { from: { transform: "translateX(-100%)" }, to: { transform: "translateX(300%)" } },
         "dialog-in": { from: { opacity: "0", transform: "translateY(4px) scale(0.99)" }, to: { opacity: "1", transform: "none" } },
+        "aviso-luz": {
+          "0%, 100%": { boxShadow: "0 0 0 0 rgb(var(--brand) / 0.12)", filter: "brightness(0.94)" },
+          "50%": { boxShadow: "0 0 16px 4px rgb(var(--brand) / 0.42)", filter: "brightness(1.08)" },
+        },
       },
       animation: {
         "toast-in": "toast-in 160ms cubic-bezier(0.2, 0, 0, 1)",
@@ -45,6 +49,7 @@ export default {
         puntos: "puntos 1s ease-in-out infinite",
         barra: "barra 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite",
         "dialog-in": "dialog-in 140ms cubic-bezier(0.2, 0, 0, 1)",
+        "aviso-luz": "aviso-luz 1.4s ease-in-out infinite",
       },
     },
   },
