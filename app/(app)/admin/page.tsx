@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/components/auth-provider";
-import { Badge, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
+import { Badge, Button, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 
 interface AccountRow {
   uid: string;
@@ -54,26 +54,25 @@ export default function AdminPage() {
 
   return (
     <>
-      <PageHeader title="Administración" description="Cuentas registradas y su actividad de inicio de sesión." />
+      <PageHeader title="Administración" description={users.length ? `${users.length} cuentas registradas · solo datos de cuenta y actividad` : "Cuentas registradas y su actividad."} />
       {error ? (
-        <Card>
-          <EmptyState icon={<span aria-hidden>!</span>} title="No se pudo abrir la administración" description={error} />
-        </Card>
+        <div className="border-y border-border">
+          <EmptyState title="No se pudo abrir la administración" description={error} />
+        </div>
       ) : loading && users.length === 0 ? (
         <Skeleton className="h-48 w-full" />
       ) : users.length === 0 ? (
-        <Card><EmptyState icon={<span aria-hidden>◎</span>} title="No hay cuentas registradas" description="Cuando alguien cree una cuenta aparecerá aquí." /></Card>
+        <div className="border-y border-border"><EmptyState title="Aún no hay cuentas" description="Cuando alguien se registre, aparece aquí." /></div>
       ) : (
         <>
-          <p className="mb-3 text-xs text-muted">{users.length} cuentas cargadas. Solo se muestran datos de cuenta y actividad.</p>
-          <Card>
+          <div className="border-y border-border">
             <ul className="divide-y divide-border">
               {users.map((account) => (
-                <li key={account.uid} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_190px_190px] sm:items-center sm:px-5">
+                <li key={account.uid} className="grid gap-2 px-1 py-3 sm:grid-cols-[minmax(0,1fr)_190px_190px] sm:items-center sm:px-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{account.nombre}</p>
                     <p className="truncate text-xs text-muted">{account.email || "Sin correo"}</p>
-                    <div className="mt-1 flex gap-1.5">
+                    <div className="mt-1 flex gap-3">
                       <Badge tone={account.emailVerificado ? "ok" : "warn"}>{account.emailVerificado ? "Correo verificado" : "Pendiente"}</Badge>
                       {account.deshabilitado && <Badge tone="warn">Desactivada</Badge>}
                     </div>
@@ -83,7 +82,7 @@ export default function AdminPage() {
                 </li>
               ))}
             </ul>
-          </Card>
+          </div>
           {nextPageToken && (
             <div className="mt-4 text-center">
               <Button variant="secondary" loading={loading} onClick={() => void load(nextPageToken)}>Cargar más cuentas</Button>

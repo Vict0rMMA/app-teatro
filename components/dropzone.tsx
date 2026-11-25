@@ -1,11 +1,11 @@
 "use client";
 
 import { useRef, useState, type DragEvent } from "react";
-import { IconUpload } from "./icons";
 import { Spinner, cx } from "./ui";
 
 const MAX = 10 * 1024 * 1024;
 
+/** Área grande para soltar el registro. Tipografía primero, sin icono decorativo. */
 export function Dropzone({
   onFile,
   onError,
@@ -40,6 +40,7 @@ export function Dropzone({
       role="button"
       tabIndex={0}
       aria-disabled={busy}
+      aria-label="Subir el registro de personal"
       onClick={() => !busy && input.current?.click()}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && !busy && input.current?.click()}
       onDragOver={(e) => {
@@ -49,29 +50,24 @@ export function Dropzone({
       onDragLeave={() => setOver(false)}
       onDrop={drop}
       className={cx(
-        "group relative flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-6 py-14 text-center transition-colors",
-        over ? "border-brand bg-brand-soft/60" : "border-border bg-surface hover:border-fg/25 hover:bg-subtle/40",
+        "flex min-h-[260px] cursor-pointer flex-col justify-between rounded-box border-[1.5px] border-dashed p-6 transition-colors duration-100 sm:min-h-[300px] sm:p-10",
+        over ? "border-brand bg-brand-soft/50" : "border-border bg-surface hover:border-fg/30",
         busy && "cursor-wait",
       )}
     >
-      <div
-        className={cx(
-          "mb-4 grid h-11 w-11 place-items-center rounded-lg border bg-bg transition-transform",
-          over ? "scale-105 border-brand/40 text-brand" : "border-border text-muted group-hover:text-fg",
-        )}
-      >
-        {busy ? <Spinner /> : <IconUpload width={18} height={18} />}
-      </div>
       {busy ? (
-        <p className="text-sm font-medium">{busyLabel ?? "Procesando…"}</p>
+        <p className="flex items-center gap-3 font-serif text-2xl">
+          <Spinner className="h-5 w-5 text-brand" /> {busyLabel ?? "Procesando…"}
+        </p>
       ) : (
-        <>
-          <p className="text-sm font-medium">
-            Arrastra el registro de personal o <span className="text-brand">elígelo</span>
+        <div>
+          <p className="font-serif text-[26px] leading-tight sm:text-[32px]">{over ? "Suéltalo aquí" : "Arrastra el registro del evento"}</p>
+          <p className="mt-2 text-sm text-muted">
+            o <span className="font-medium text-brand underline decoration-brand/40 underline-offset-4">elige el archivo</span> en tu equipo
           </p>
-          <p className="mt-1 text-[13px] text-muted">.docx o .pdf · máximo 10 MB</p>
-        </>
+        </div>
       )}
+      <p className="mt-10 text-[12px] uppercase tracking-[0.06em] text-muted">.docx o .pdf · hasta 10 MB · no se guarda</p>
       <input
         ref={input}
         type="file"

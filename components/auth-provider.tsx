@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   if (configError) {
     return (
       <div className="grid min-h-dvh place-items-center px-6">
-        <div className="max-w-md rounded-lg border border-border bg-surface p-6 shadow-card">
+        <div className="max-w-md rounded-box border border-border bg-surface p-6">
           <p className="text-sm font-semibold">Falta configurar Firebase</p>
           <p className="mt-2 text-[13px] text-muted">{configError}</p>
           <p className="mt-3 text-[13px] text-muted">

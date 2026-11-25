@@ -33,7 +33,7 @@ export function DocxPreview({ load }: { load: () => Promise<Blob> }) {
   }, [load]);
 
   return (
-    <div className="relative min-h-[300px] overflow-x-auto rounded-lg bg-subtle">
+    <div className="relative min-h-[300px] overflow-x-auto rounded-box bg-subtle">
       {state === "loading" && (
         <div className="absolute inset-0 grid place-items-center text-muted">
           <Spinner />

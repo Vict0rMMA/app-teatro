@@ -42,7 +42,7 @@ export default function RecuperarPage() {
       }
     >
       {sent ? (
-        <div className="rounded-lg border border-border bg-surface p-4 text-sm">
+        <div className="rounded-box border border-border bg-surface p-4 text-sm">
           Si existe una cuenta con <span className="font-medium">{email}</span>, te llegará un correo con el enlace en unos minutos.
         </div>
       ) : (

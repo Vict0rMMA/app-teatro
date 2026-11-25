@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/components/auth-provider";
-import { IconChevron, IconHistory, IconPlus, IconSearch } from "@/components/icons";
-import { Button, Card, EmptyState, Input, PageHeader, Select, Skeleton, Stat } from "@/components/ui";
+import { IconChevron, IconPlus, IconSearch } from "@/components/icons";
+import { Button, EmptyState, Input, PageHeader, Select, Skeleton, Stat, StatRow } from "@/components/ui";
 import { watchEvents, type EventDoc } from "@/lib/data";
 import { MESES, fechaCorta, formatCOP, normalize, formatDuracion } from "@/lib/format";
 
@@ -27,11 +27,20 @@ export default function HistorialPage() {
     { horas: 0, valor: 0, aforo: 0 },
   );
 
+  const esteMes = new Date().toLocaleDateString("en-CA").slice(0, 7);
+  const delMes = (events ?? []).filter((e) => e.fecha.startsWith(esteMes)).length;
+  const contexto =
+    events === null
+      ? "Cargando…"
+      : events.length === 0
+        ? "Aquí quedan las planillas que generes."
+        : `${delMes === 1 ? "1 evento" : `${delMes} eventos`} este mes · ${events.length} en total`;
+
   return (
     <>
       <PageHeader
         title="Historial"
-        description="Planillas generadas y personal de cada evento."
+        description={contexto}
         action={
           <Link href="/">
             <Button variant="primary" icon={<IconPlus />}>
@@ -48,25 +57,24 @@ export default function HistorialPage() {
           ))}
         </div>
       ) : events.length === 0 ? (
-        <Card>
+        <div className="border-y border-border">
           <EmptyState
-            icon={<IconHistory />}
-            title="Aún no hay planillas"
-            description="Cuando generes la primera, aparecerá aquí con sus archivos y su personal."
+            title="Aún no tienes planillas"
+            description="Genera la primera: sube el registro del evento."
             action={
               <Link href="/">
-                <Button variant="primary">Generar planilla</Button>
+                <Button variant="primary">Nueva planilla</Button>
               </Link>
             }
           />
-        </Card>
+        </div>
       ) : (
         <>
-          <div className="mb-4 grid grid-cols-3 gap-3">
+          <StatRow className="mb-8">
             <Stat label="Eventos" value={filtered.length} />
             <Stat label="Horas del personal" value={formatDuracion(totals.horas)} />
-            <Stat label="Pagado al personal" value={formatCOP(totals.valor)} />
-          </div>
+            <Stat label="Pagado al personal" value={formatCOP(totals.valor)} className="col-span-2 lg:col-span-1" />
+          </StatRow>
           <div className="mb-3 flex flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
               <IconSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
@@ -81,29 +89,29 @@ export default function HistorialPage() {
               ))}
             </Select>
           </div>
-          <Card>
+          <div className="border-y border-border">
             {filtered.length === 0 ? (
               <p className="px-5 py-10 text-center text-[13px] text-muted">Ningún evento coincide con la búsqueda.</p>
             ) : (
               <ul className="divide-y divide-border">
                 {filtered.map((e) => (
                   <li key={e.id}>
-                    <Link href={`/planillas/${e.id}`} className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-subtle/50 sm:px-5">
-                      <div className="w-16 shrink-0 text-[13px] text-muted tabular">{fechaCorta(e.fecha)}</div>
+                    <Link href={`/planillas/${e.id}`} className="flex items-center gap-4 px-1 py-3.5 transition-colors duration-100 hover:bg-subtle/40 sm:px-2">
+                      <div className="tabular w-16 shrink-0 text-[13px] text-muted">{fechaCorta(e.fecha)}</div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{e.nombre}</p>
-                        <p className="tabular text-xs text-faint">
+                        <p className="truncate text-[15px] font-medium">{e.nombre}</p>
+                        <p className="tabular text-xs text-muted">
                           {e.staffCount} personas · {formatDuracion(e.totalHoras)} · aforo {e.aforo ?? "—"}
                         </p>
                       </div>
-                      <div className="tabular hidden text-right text-[13px] sm:block">{formatCOP(e.totalPagado)}</div>
+                      <div className="tabular hidden w-28 text-right text-[13px] sm:block">{formatCOP(e.totalPagado)}</div>
                       <IconChevron className="text-faint" />
                     </Link>
                   </li>
                 ))}
               </ul>
             )}
-          </Card>
+          </div>
         </>
       )}
     </>

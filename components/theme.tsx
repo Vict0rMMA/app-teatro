@@ -14,7 +14,7 @@ export function ThemeToggle({ className }: { className?: string }) {
     const next = !document.documentElement.classList.contains("dark");
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("theme", next ? "dark" : "light");
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", next ? "#0a0a0b" : "#fafafa");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", next ? "#12100E" : "#FAF7F2");
     setDark(next);
   }
 
@@ -22,7 +22,7 @@ export function ThemeToggle({ className }: { className?: string }) {
     <button
       onClick={toggle}
       aria-label={dark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-      className={className ?? "grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-subtle hover:text-fg"}
+      className={className ?? "grid h-8 w-8 place-items-center rounded-ctl text-muted transition-colors duration-100 hover:bg-subtle hover:text-fg"}
     >
       {dark ? <IconSun /> : <IconMoon />}
     </button>

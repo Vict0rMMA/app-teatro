@@ -24,14 +24,14 @@ export function FirmaField({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="grid h-20 w-44 shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-white"
+        className="grid h-20 w-44 shrink-0 place-items-center overflow-hidden rounded-ctl border border-border bg-white"
         aria-label={value ? "Cambiar firma" : "Agregar firma"}
       >
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={`data:image/png;base64,${value}`} alt="Tu firma" className="max-h-16 max-w-[160px] object-contain" />
         ) : (
-          <span className="text-[12px] text-zinc-400">Sin firma</span>
+          <span className="text-[12px] text-stone-400">Sin firma</span>
         )}
       </button>
       <div className="flex flex-col gap-1.5">

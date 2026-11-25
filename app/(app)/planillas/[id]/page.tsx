@@ -129,9 +129,8 @@ export default function PlanillaPage() {
   }
   if (event === null) {
     return (
-      <Card>
+      <div className="border-y border-border">
         <EmptyState
-          icon={<IconFile />}
           title="Planilla no encontrada"
           description="Puede que la hayas eliminado o que el enlace no sea tuyo."
           action={
@@ -140,7 +139,7 @@ export default function PlanillaPage() {
             </Link>
           }
         />
-      </Card>
+      </div>
     );
   }
 
@@ -148,15 +147,15 @@ export default function PlanillaPage() {
   const coordinadores = staff?.filter((s) => s.cargo === "C" || s.cargo === "AC").length ?? 0;
 
   return (
-    <div className="animate-fade-up">
+    <div>
       {/* Encabezado */}
       <Link href="/planillas" className="text-[13px] text-muted hover:text-fg">
         ← Historial
       </Link>
       <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-wider text-brand">Planillas</p>
-          <h1 className="mt-1 text-3xl font-bold leading-tight">{event.nombre}</h1>
+          <p className="eyebrow">Planilla</p>
+          <h1 className="mt-2 font-serif text-[28px] font-medium leading-[1.1] tracking-[-0.01em] sm:text-[34px]">{event.nombre}</h1>
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted">
             <span>
               {fechaWhatsapp(event.fecha)} de {event.fecha.slice(0, 4)}
@@ -178,7 +177,7 @@ export default function PlanillaPage() {
               <IconAlert className="mt-0.5 shrink-0 text-warn" width={14} height={14} />
               <span>
                 Las planillas salieron sin firma.{" "}
-                <Link href="/ajustes" className="font-bold underline underline-offset-2">
+                <Link href="/ajustes" className="font-medium underline underline-offset-2">
                   Agrega tu firma en Ajustes
                 </Link>{" "}
                 y vuelve a descargarlas: se regeneran con ella.
@@ -195,17 +194,17 @@ export default function PlanillaPage() {
       )}
 
       {/* Cifras */}
-      <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-surface lg:grid-cols-4">
+      <div className="mt-8 grid grid-cols-2 border-y border-border lg:grid-cols-4">
         {[
           { label: "Aforo", value: event.aforo != null ? event.aforo.toLocaleString("es-CO") : "—", sub: event.aforo != null ? "personas" : "sin dato" },
           { label: "Personal", value: String(event.staffCount), sub: staff ? `${coordinadores} coordinación · ${event.staffCount - coordinadores} acomodadores` : "…" },
           { label: "Horas", value: formatDuracion(event.totalHoras), sub: "del personal" },
           { label: "Pagado", value: formatCOP(event.totalPagado), sub: "al personal" },
         ].map((k, i) => (
-          <div key={k.label} className={cx("px-5 py-4", i % 2 === 1 && "border-l border-border", i >= 2 && "border-t border-border lg:border-t-0", i === 2 && "lg:border-l")}>
-            <p className="text-xs text-muted">{k.label}</p>
-            <p className="tabular mt-1 text-2xl font-bold">{k.value}</p>
-            <p className="mt-1 truncate text-xs text-faint">{k.sub}</p>
+          <div key={k.label} className={cx("min-w-0 py-5", i % 2 === 1 ? "border-l border-border pl-5" : "pr-5", i >= 2 && "border-t border-border lg:border-t-0", i === 2 && "lg:border-l lg:pl-5")}>
+            <p className="eyebrow">{k.label}</p>
+            <p className="tabular mt-1 font-serif text-[26px] leading-tight">{k.value}</p>
+            <p className="mt-1 truncate text-xs text-muted">{k.sub}</p>
           </div>
         ))}
       </div>
@@ -214,20 +213,20 @@ export default function PlanillaPage() {
         <div className="min-w-0 space-y-8">
           {/* Archivos */}
           <section>
-            <h2 className="mb-3 text-sm font-bold">Archivos</h2>
+            <h2 className="mb-4 font-serif text-xl font-medium">Archivos</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               {FILES.map((f) => (
                 <div
                   key={f.key}
                   className={cx(
-                    "group flex gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-fg/20",
-                    f.key === "registro" && "border-brand/40 bg-brand-soft/20 p-5 sm:col-span-2 sm:items-center",
+                    "group flex gap-3 rounded-box border border-border bg-surface p-3 transition-colors duration-100 hover:border-fg/25",
+                    f.key === "registro" && "border-brand/30 p-5 sm:col-span-2 sm:items-center",
                   )}
                 >
                   <button
                     onClick={() => setPreview(f.key)}
                     className={cx(
-                      "relative grid h-[68px] w-[54px] shrink-0 place-items-center rounded border border-border bg-white",
+                      "relative grid h-[68px] w-[54px] shrink-0 place-items-center rounded-ctl border border-border bg-white",
                       f.key === "registro" && "h-24 w-20",
                     )}
                     aria-label={`Previsualizar ${f.label}`}
@@ -235,13 +234,13 @@ export default function PlanillaPage() {
                     <span className="absolute right-0 top-0 h-3 w-3 rounded-bl border-b border-l border-border bg-subtle" />
                     <span className="space-y-1">
                       <span className="block h-[3px] w-7 rounded bg-brand" />
-                      <span className="block h-[3px] w-7 rounded bg-zinc-300" />
-                      <span className="block h-[3px] w-5 rounded bg-zinc-300" />
-                      <span className="block h-[3px] w-6 rounded bg-zinc-300" />
+                      <span className="block h-[3px] w-7 rounded bg-stone-300" />
+                      <span className="block h-[3px] w-5 rounded bg-stone-300" />
+                      <span className="block h-[3px] w-6 rounded bg-stone-300" />
                     </span>
                   </button>
                   <div className="flex min-w-0 flex-1 flex-col">
-                      <p className={cx("text-sm font-bold", f.key === "registro" && "text-lg")}>{f.key === "registro" ? "REGISTRO" : f.label}</p>
+                      <p className={cx("text-sm font-medium", f.key === "registro" && "font-serif text-xl")}>{f.key === "registro" ? "REGISTRO" : f.label}</p>
                     <p className={cx("text-xs text-muted", f.key === "registro" && "text-[13px]")}>{f.key === "registro" ? "Documento base: personal, horas y pagos." : f.desc}</p>
                     {f.key === "registro" && <p className="mt-1 text-xs text-muted">Las demás planillas se preparan con los datos de este registro.</p>}
                     {f.key === "registro" && (
@@ -254,8 +253,8 @@ export default function PlanillaPage() {
                         onClick={() => download(f.key)}
                         disabled={busy === f.key}
                         className={cx(
-                          "inline-flex h-7 items-center gap-1.5 rounded px-2 text-xs font-bold text-fg hover:bg-subtle disabled:opacity-60",
-                          f.key === "registro" && "h-9 bg-brand px-3 text-brand-fg hover:bg-brand/90",
+                          "inline-flex h-8 items-center gap-1.5 rounded-ctl px-2 text-xs font-medium text-fg hover:bg-subtle disabled:opacity-60",
+                          f.key === "registro" && "h-10 bg-brand px-3.5 text-[13px] text-brand-fg hover:bg-brand-hover",
                         )}
                       >
                         {busy === f.key ? <Spinner className="h-3 w-3" /> : <IconDownload width={13} height={13} />} Descargar
@@ -273,18 +272,18 @@ export default function PlanillaPage() {
           {/* Personal */}
           <section>
             <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-sm font-bold">Personal del evento</h2>
-              {staff && staff.length > 0 && <span className="text-xs text-faint">{staff.length} personas</span>}
+              <h2 className="font-serif text-xl font-medium">Personal del evento</h2>
+              {staff && staff.length > 0 && <span className="text-xs text-muted">{staff.length} personas</span>}
             </div>
             {staff === null ? (
               <Skeleton className="h-40 w-full" />
             ) : staff.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border px-5 py-8 text-center text-[13px] text-muted">Esta planilla se generó sin lista de personal.</p>
+              <p className="border-y border-border px-5 py-8 text-center text-[13px] text-muted">Esta planilla se generó sin lista de personal.</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+              <div className="overflow-x-auto rounded-box border border-border bg-surface">
                 <table className="w-full min-w-[660px] text-[13px]">
                   <thead>
-                    <tr className="border-b border-border bg-subtle/50 text-left text-[11px] font-bold uppercase tracking-wide text-faint">
+                    <tr className="border-b border-border text-left text-[11px] font-medium uppercase tracking-[0.06em] text-muted">
                       <th className="py-2.5 pl-4">Nombre</th>
                       <th className="py-2.5">Cargo</th>
                       <th className="py-2.5">UBI</th>
@@ -296,8 +295,8 @@ export default function PlanillaPage() {
                   </thead>
                   <tbody>
                     {staff.map((s) => (
-                      <tr key={s.id} className="border-b border-border/60 last:border-0">
-                        <td className="py-2.5 pl-4 font-bold">{s.nombre}</td>
+                      <tr key={s.id} className="border-b border-border/60 transition-colors duration-100 last:border-0 hover:bg-subtle/40">
+                        <td className="py-2.5 pl-4 font-medium">{s.nombre}</td>
                         <td className="py-2.5">{s.cargo ? <Badge tone={s.cargo === "C" ? "brand" : "neutral"}>{s.cargo}</Badge> : "—"}</td>
                         <td className="py-2.5">
                           {s.ubi ? (
@@ -321,7 +320,7 @@ export default function PlanillaPage() {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-border font-bold">
+                    <tr className="border-t border-border font-serif text-[16px]">
                       <td className="py-3 pl-4" colSpan={4}>
                         Total
                       </td>
@@ -340,13 +339,13 @@ export default function PlanillaPage() {
           {/* WhatsApp */}
           <section>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-bold">Mensaje para el grupo</h2>
-              <button onClick={copy} className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:underline">
+              <h2 className="eyebrow text-fg">Mensaje para el grupo</h2>
+              <button onClick={copy} className="inline-flex items-center gap-1.5 text-xs font-medium text-brand underline-offset-2 hover:underline">
                 {copied ? <IconCheck width={13} height={13} /> : <IconCopy width={13} height={13} />}
                 {copied ? "Copiado" : "Copiar"}
               </button>
             </div>
-            <div className="rounded-lg border border-border bg-[#efeae2] p-4 dark:bg-[#0b141a]">
+            <div className="rounded-box border border-border bg-[#efeae2] p-4 dark:bg-[#0b141a]">
               <div className="relative ml-auto max-w-[95%] rounded-lg rounded-tr-none bg-[#d9fdd3] px-3 pb-5 pt-2 text-[13.5px] leading-relaxed text-[#111b21] shadow-sm dark:bg-[#005c4b] dark:text-[#e9edef]">
                 <WhatsappText text={event.whatsapp} />
                 <span className="absolute bottom-1 right-2 inline-flex items-center gap-0.5 text-[10px] text-[#667781] dark:text-[#ffffff99]">
@@ -366,7 +365,7 @@ export default function PlanillaPage() {
 
           {event.evaluacion?.notas?.length > 0 && (
             <section>
-              <h2 className="mb-2 text-sm font-bold">Notas</h2>
+              <h2 className="eyebrow mb-2 text-fg">Notas</h2>
               <ul className="space-y-1.5 text-[13px]">
                 {event.evaluacion.notas.map((n) => (
                   <li key={n} className="flex gap-2">
@@ -390,7 +389,7 @@ export default function PlanillaPage() {
             <button
               key={f.key}
               onClick={() => setPreview(f.key)}
-              className={cx("rounded-md px-2.5 py-1 text-[13px]", preview === f.key ? "bg-subtle font-bold text-fg" : "text-muted hover:text-fg")}
+              className={cx("rounded-ctl px-2.5 py-1 text-[13px]", preview === f.key ? "bg-subtle font-medium text-fg" : "text-muted hover:text-fg")}
             >
               {f.label}
             </button>
@@ -413,7 +412,7 @@ export default function PlanillaPage() {
         }
       >
         <p className="text-sm text-muted">
-          Se borra todo lo de <span className="font-bold text-fg">{event.nombre}</span>: la planilla, la lista de personal y las horas que se guardaron en Mis horas para este evento. No se puede deshacer.
+          Se borra todo lo de <span className="font-medium text-fg">{event.nombre}</span>: la planilla, la lista de personal y las horas que se guardaron en Mis horas para este evento. No se puede deshacer.
         </p>
       </Modal>
     </div>

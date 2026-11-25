@@ -7,12 +7,12 @@ import { useSession } from "@/components/auth-provider";
 import { Dropzone } from "@/components/dropzone";
 import { FirmaEditor } from "@/components/firma/firma-editor";
 import { usePlaces } from "@/components/hooks";
-import { IconAlert, IconFile, IconPencil, IconPlus, IconTrash, IconX } from "@/components/icons";
+import { IconPencil, IconPlus, IconTrash } from "@/components/icons";
 import { horasDe, nuevaPersona, RegistroTable, type PersonaDraft } from "@/components/registro-table";
 import { useToast } from "@/components/toast";
-import { Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Textarea, cx } from "@/components/ui";
+import { Badge, Button, Card, Field, Input, Modal, Notice, PageHeader, Select, Textarea, cx } from "@/components/ui";
 import { apiFetch } from "@/lib/firebase/client";
-import { diffHoras, findBestNameMatch, formatCOP, hora12, isIsoDate, parseDuracion, formatDuracion } from "@/lib/format";
+import { diffHoras, fechaWhatsapp, findBestNameMatch, formatCOP, hora12, isIsoDate, parseDuracion, formatDuracion } from "@/lib/format";
 import { calcularRegistro, fromMin, HORAS_BASE, mensajeSupuestas, prepararPersonal, salidaSugerida, toMin } from "@/lib/registro/calculo";
 import type { Registro, StaffRow } from "@/lib/registro/types";
 import { guardarRegistro, base64ToBlob } from "@/lib/registro-memoria";
@@ -84,6 +84,21 @@ export default function NuevaPlanillaPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState(false);
   const formTop = useRef<HTMLDivElement>(null);
+  // Paso visible en pantalla, para el stepper.
+  const [paso, setPaso] = useState<string>("paso-archivo");
+  const hayDraft = !!draft;
+  useEffect(() => {
+    if (!hayDraft) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (vis[0]) setPaso(vis[0].target.id);
+      },
+      { rootMargin: "-30% 0px -60% 0px" },
+    );
+    document.querySelectorAll("section[id^='paso-']").forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [hayDraft]);
 
   useEffect(() => {
     if (!firmaEvento) return setFirmaEventoUrl(null);
@@ -302,14 +317,23 @@ export default function NuevaPlanillaPage() {
   if (!draft || !mine) {
     return (
       <>
-        <PageHeader title="Nueva planilla" description="Sube el registro de personal y genera REGISTRO, LLAVES, COLILLAS y EVALUACIÓN." />
+        <PageHeader eyebrow="Nueva planilla" title="Sube el registro del evento" description={hoyLargo()} />
         <Dropzone onFile={onFile} onError={(m) => toast.error(m)} busy={parsing} busyLabel="Leyendo el registro…" />
-        <div className="mt-4 flex flex-col items-center gap-1 text-center text-[13px] text-muted">
-          <p>El archivo se procesa en memoria y no se guarda. Cédulas y teléfonos nunca se almacenan.</p>
-          <button className="font-medium text-fg hover:underline" onClick={() => start({}, [nuevaPersona()], "", null)}>
+        <div className="mt-5 flex flex-col gap-3 text-[13px] text-muted sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-md">Se lee en memoria y no se guarda. Cédulas y teléfonos nunca quedan en la app.</p>
+          <Button variant="secondary" onClick={() => start({}, [nuevaPersona()], "", null)}>
             Llenar los datos a mano
-          </button>
+          </Button>
         </div>
+        <ol className="mt-12 grid gap-6 border-t border-border pt-6 text-[13px] sm:grid-cols-4">
+          {PASOS.map((p, i) => (
+            <li key={p.id}>
+              <p className="tabular font-serif text-lg text-muted">{String(i + 1).padStart(2, "0")}</p>
+              <p className="mt-1 font-medium">{p.label}</p>
+              <p className="mt-0.5 text-muted">{p.desc}</p>
+            </li>
+          ))}
+        </ol>
       </>
     );
   }
@@ -317,347 +341,415 @@ export default function NuevaPlanillaPage() {
   const autoDelArchivo = draft.personas.filter((p) => p.auto && p.delArchivo).length;
   const supuestas = mensajeSupuestas(autoDelArchivo, base, extras);
   const alertas = [...(supuestas ? [supuestas] : []), ...calc.alertas];
+  const nAvisos = alertas.length + (manualReason ? 1 : draft.warnings.length) + Object.keys(errors).length;
+  const hechos = [
+    true,
+    !!draft.evento.trim() && isIsoDate(draft.fecha) && /^\d{2}:\d{2}$/.test(draft.horaCitacion) && /^\d{2}:\d{2}$/.test(draft.horaEvento),
+    draft.personas.length > 0 && draft.personas.every((p) => p.nombre.trim()) && /^\d{2}:\d{2}$/.test(salida) && baseValida,
+    !!(firmaEvento || profile.firma),
+  ];
+
+  const resumen = (
+    <dl className="space-y-4">
+      <div>
+        <dt className="eyebrow">Personal</dt>
+        <dd className="tabular mt-0.5 text-sm">
+          {draft.personas.length} {draft.personas.length === 1 ? "persona" : "personas"}
+        </dd>
+      </div>
+      <div>
+        <dt className="eyebrow">Horas</dt>
+        <dd className="tabular mt-0.5 font-serif text-2xl">{formatDuracion(calc.totalHoras)}</dd>
+      </div>
+      <div>
+        <dt className="eyebrow">Total a pagar</dt>
+        <dd className="tabular mt-0.5 font-serif text-2xl">{formatCOP(calc.totalValor)}</dd>
+      </div>
+      <div>
+        <dt className="eyebrow">Advertencias</dt>
+        <dd className="mt-1">
+          {nAvisos ? <Badge tone="warn">{nAvisos === 1 ? "1 por revisar" : `${nAvisos} por revisar`}</Badge> : <Badge tone="ok">Sin pendientes</Badge>}
+        </dd>
+      </div>
+    </dl>
+  );
 
   return (
     <form onSubmit={submit} noValidate>
-      <div ref={formTop} className="scroll-mt-20" />
+      <div ref={formTop} className="scroll-mt-28" />
       <PageHeader
-        title="Confirma los datos"
-        description={
-          draft.archivo ? (
-            <span className="inline-flex items-center gap-1.5">
-              <IconFile width={14} height={14} /> {draft.archivo.name}
-            </span>
-          ) : (
-            "Entrada manual"
-          )
-        }
+        eyebrow="Nueva planilla"
+        title={draft.evento.trim() || "Evento sin nombre"}
+        description={draft.fecha ? `${fechaWhatsapp(draft.fecha)} de ${draft.fecha.slice(0, 4)}` : "Completa los datos y genera las cuatro planillas."}
         action={
-          <Button type="button" variant="ghost" icon={<IconX />} onClick={reset}>
+          <Button type="button" variant="ghost" onClick={reset}>
             Empezar de nuevo
           </Button>
         }
       />
 
-      {manualReason && (
-        <Notice>
-          <p className="font-medium">No pudimos leer este archivo automáticamente.</p>
-          <p className="mt-0.5 text-muted">{manualReason} Completa los datos a mano; el resultado es el mismo.</p>
-        </Notice>
-      )}
-      {!manualReason && draft.warnings.length > 0 && (
-        <Notice>
-          {draft.warnings.map((w) => (
-            <p key={w}>{w} Complétalo abajo.</p>
+      {/* Stepper */}
+      <nav aria-label="Pasos" className="sticky top-14 z-20 -mx-4 mb-8 border-b border-border bg-bg/95 px-4 backdrop-blur sm:-mx-8 sm:px-8 md:top-0">
+        <ol className="flex gap-6 overflow-x-auto sm:gap-10">
+          {PASOS.map((p, i) => (
+            <li key={p.id} className="shrink-0">
+              <a
+                href={`#${p.id}`}
+                aria-current={paso === p.id ? "step" : undefined}
+                className={cx(
+                  "relative flex h-12 items-center gap-2 text-[13px] transition-colors duration-100",
+                  paso === p.id ? "text-fg" : "text-muted hover:text-fg",
+                )}
+              >
+                <span className={cx("tabular font-serif text-[15px]", hechos[i] ? "text-ok" : paso === p.id ? "text-brand" : "text-faint")}>{i + 1}</span>
+                <span className={paso === p.id ? "font-medium" : undefined}>{p.label}</span>
+                {paso === p.id && <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 bg-brand" />}
+              </a>
+            </li>
           ))}
-        </Notice>
-      )}
+        </ol>
+      </nav>
 
-      <div className="space-y-5">
-        <Card>
-          <StepHeader n={1} title="Evento" description="Datos que salen en el encabezado de las planillas." />
-          <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-4">
-            <Field label="Nombre del evento" error={errors.evento} className="sm:col-span-2 lg:col-span-4">
-              {(id) => <Input id={id} value={draft.evento} onChange={(e) => set("evento", e.target.value)} placeholder="RED DE ESCUELAS" />}
-            </Field>
-            <Field label="Fecha" error={errors.fecha}>
-              {(id) => <Input id={id} type="date" value={draft.fecha} onChange={(e) => set("fecha", e.target.value)} />}
-            </Field>
-            <Field label="Hora de citación" error={errors.horaCitacion}>
-              {(id) => <Input id={id} type="time" value={draft.horaCitacion} onChange={(e) => set("horaCitacion", e.target.value)} />}
-            </Field>
-            <Field label="Hora del evento" error={errors.horaEvento}>
-              {(id) => <Input id={id} type="time" value={draft.horaEvento} onChange={(e) => set("horaEvento", e.target.value)} />}
-            </Field>
-            <Field label="Aforo" hint="Opcional" error={errors.aforo}>
-              {(id) => <Input id={id} inputMode="numeric" value={draft.aforo} onChange={(e) => set("aforo", e.target.value.replace(/\D/g, ""))} placeholder="500" />}
-            </Field>
-          </div>
-        </Card>
-
-        <Card>
-          <StepHeader
-            n={2}
-            title="Registro de personal"
-            description={`Escribe la llegada de cada persona o sus horas: el resto se calcula. A = base · AC = base + ${extras.ac} · C = base + ${extras.c}. Valor por hora ${formatCOP(defaults.valorHora)}.`}
-            action={
-              <div className="flex items-start gap-3">
-                <Field className="w-24" label="Horas base" hint={baseValida ? `AC +${extras.ac} · C +${extras.c}` : undefined} error={baseValida ? null : "Entre 1 y 16"}>
-                  {(id) => (
-                    <Input
-                      id={id}
-                      inputMode="decimal"
-                      className="tabular"
-                      value={draft.base}
-                      onChange={(e) => set("base", e.target.value.replace(/[^\d.,:hm ]/gi, ""))}
-                      placeholder="4"
-                    />
-                  )}
-                </Field>
-                <Field className="w-36" label="Salida (todos)" error={errors.salida}>
-                  {(id) => (
-                    <Input
-                      id={id}
-                      type="time"
-                      value={salida}
-                      onChange={(e) => setDraft((d) => (d ? { ...d, salida: e.target.value, salidaEditada: true } : d))}
-                    />
-                  )}
-                </Field>
-              </div>
-            }
-          />
-          <div className="p-4 pt-2 sm:p-5 sm:pt-2">
-            {draft.salidaEditada && sugerida && sugerida !== salida && (
-              <p className="mb-2 text-xs text-muted">
-                Sugerida: {hora12(sugerida)} ({draft.salidaArchivo ? "la del registro" : `citación + ${base} h base`}).{" "}
-                <button type="button" className="font-medium text-fg underline underline-offset-2" onClick={() => setDraft((d) => (d ? { ...d, salidaEditada: false } : d))}>
-                  Usar la sugerida
-                </button>
+      <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_220px]">
+        <div className="min-w-0">
+          {/* 1 · Archivo */}
+          <Paso id="paso-archivo" n={1} title="Archivo">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <p className="text-sm">
+                {draft.archivo ? (
+                  <>
+                    <span className="font-medium">{draft.archivo.name}</span>
+                    <span className="text-muted"> · leído en memoria</span>
+                  </>
+                ) : (
+                  <span className="text-muted">Entrada manual, sin archivo.</span>
+                )}
               </p>
+              <button type="button" onClick={reset} className="text-[13px] text-muted underline underline-offset-2 hover:text-fg">
+                Cambiar archivo
+              </button>
+            </div>
+            {manualReason && (
+              <Notice className="mt-4">
+                <p className="font-medium">No se pudo leer el archivo automáticamente.</p>
+                <p className="text-muted">{manualReason} Completa los datos a mano; el resultado es el mismo.</p>
+              </Notice>
             )}
-            {alertas.length > 0 && (
-              <div className="mb-3 space-y-1 rounded-md border border-warn/25 bg-warn/5 px-3 py-2 text-[13px]">
-                {alertas.map((a) => (
-                  <p key={a} className="flex gap-2">
-                    <IconAlert className="mt-0.5 shrink-0 text-warn" width={14} height={14} />
-                    {a}
-                  </p>
+            {!manualReason && draft.warnings.length > 0 && (
+              <Notice className="mt-4">
+                {draft.warnings.map((w) => (
+                  <p key={w}>{w} Complétalo abajo.</p>
                 ))}
-              </div>
+              </Notice>
             )}
-            <RegistroTable
-              rows={draft.personas}
-              filas={calc.filas}
-              totals={{ horas: calc.totalHoras, valor: calc.totalValor }}
-              onChange={(rows) => set("personas", rows)}
-              highlight={mine.fila}
-              base={base}
-              extras={extras}
-              ubicaciones={defaults.ubicaciones}
-              salida={salida || null}
-            />
-            {errors.personas && <p className="mt-2 text-xs text-danger">{errors.personas}</p>}
-          </div>
-        </Card>
+          </Paso>
 
-        <Card>
-          <StepHeader n={3} title="Planillas" description="Valores por defecto de Ajustes; cámbialos solo para este evento." />
-          <div className="divide-y divide-border">
-            <Section title="Llaves">
-              <Field label="Nota" hint="Va en la línea NOTA: de LLAVES. Incluye cualquier observación sobre las llaves.">
-                {(id) => <Textarea id={id} rows={2} value={draft.notaLlaves} onChange={(e) => set("notaLlaves", e.target.value)} />}
+          {/* 2 · Evento */}
+          <Paso id="paso-evento" n={2} title="Evento" description="Sale en el encabezado de las cuatro planillas.">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Field label="Nombre del evento" error={errors.evento} className="sm:col-span-2 lg:col-span-4">
+                {(id) => <Input id={id} value={draft.evento} onChange={(e) => set("evento", e.target.value)} placeholder="RED DE ESCUELAS" />}
               </Field>
-            </Section>
-
-            <Section title="Evaluación del evento">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Reclamos y sugerencias del público">
-                  {(id) => <Textarea id={id} rows={2} value={draft.reclamos} onChange={(e) => set("reclamos", e.target.value)} />}
-                </Field>
-                <Field label="Sugerencias del coordinador">
-                  {(id) => <Textarea id={id} rows={2} value={draft.sugerencias} onChange={(e) => set("sugerencias", e.target.value)} />}
-                </Field>
-                <Field label="Aspectos a mejorar en próximos eventos" hint="Vacío = línea para llenar a mano.">
-                  {(id) => <Textarea id={id} rows={2} value={draft.aspectosMejorar} onChange={(e) => set("aspectosMejorar", e.target.value)} />}
-                </Field>
-                <Field label="Aspectos que deben permanecer" hint="Vacío = línea para llenar a mano.">
-                  {(id) => <Textarea id={id} rows={2} value={draft.aspectosPermanecer} onChange={(e) => set("aspectosPermanecer", e.target.value)} />}
-                </Field>
-              </div>
-              <div className="mt-4 space-y-2">
-                <p className="text-[13px] font-medium">Notas</p>
-                {draft.notas.map((n, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="text-faint">•</span>
-                    <Input value={n} onChange={(e) => set("notas", draft.notas.map((x, j) => (j === i ? e.target.value : x)))} aria-label={`Nota ${i + 1}`} />
-                    <button
-                      type="button"
-                      onClick={() => set("notas", draft.notas.filter((_, j) => j !== i))}
-                      className="grid h-8 w-8 shrink-0 place-items-center rounded text-faint hover:bg-subtle hover:text-danger"
-                      aria-label={`Quitar nota ${i + 1}`}
-                    >
-                      <IconTrash width={14} height={14} />
-                    </button>
-                  </div>
-                ))}
-                <Button type="button" size="sm" variant="ghost" icon={<IconPlus />} onClick={() => set("notas", [...draft.notas, ""])}>
-                  Agregar nota
-                </Button>
-              </div>
-            </Section>
-
-            <Section title="Colillas">
-              {!showLocs ? (
-                <Button type="button" size="sm" variant="ghost" icon={<IconPlus />} onClick={() => setShowLocs(true)}>
-                  Agregar boletas y valor por localidad (opcional)
-                </Button>
-              ) : (
-                <div className="-mx-4 overflow-x-auto sm:mx-0">
-                  <table className="w-full min-w-[560px] text-[13px]">
-                    <thead>
-                      <tr className="text-left text-[11px] uppercase tracking-wide text-faint">
-                        <th className="py-1.5 pl-4 font-medium sm:pl-0">Localidad</th>
-                        <th className="w-28 py-1.5 font-medium">Boletas</th>
-                        <th className="w-32 py-1.5 font-medium">Valor</th>
-                        <th className="w-32 py-1.5 text-right font-medium">Total</th>
-                        <th className="py-1.5 pl-3 font-medium">Observaciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {LOCS.map(({ key, label }) => {
-                        const l = draft.localidades[key];
-                        const b = toInt(l.boletas);
-                        const v = toInt(l.valor);
-                        const setL = (patch: Partial<typeof l>) => set("localidades", { ...draft.localidades, [key]: { ...l, ...patch } });
-                        return (
-                          <tr key={key} className="border-t border-border/70">
-                            <td className="py-1.5 pl-4 sm:pl-0">{label}</td>
-                            <td className="py-1.5 pr-2">
-                              <Input inputMode="numeric" className="h-8 tabular" value={l.boletas} onChange={(e) => setL({ boletas: e.target.value.replace(/\D/g, "") })} aria-label={`Boletas ${label}`} />
-                            </td>
-                            <td className="py-1.5 pr-2">
-                              <Input inputMode="numeric" className="h-8 tabular" value={l.valor} onChange={(e) => setL({ valor: e.target.value.replace(/\D/g, "") })} placeholder="$" aria-label={`Valor ${label}`} />
-                            </td>
-                            <td className="tabular py-1.5 text-right">{b != null && v != null ? formatCOP(b * v) : "—"}</td>
-                            <td className="py-1.5 pl-3">
-                              <Input className="h-8" value={l.observacion} maxLength={120} onChange={(e) => setL({ observacion: e.target.value })} aria-label={`Observaciones ${label}`} />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Section>
-
-            <Section title="WhatsApp">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Observaciones">{(id) => <Textarea id={id} rows={2} value={draft.observaciones} onChange={(e) => set("observaciones", e.target.value)} />}</Field>
-                <Field label="Objetos perdidos">{(id) => <Textarea id={id} rows={2} value={draft.objetosPerdidos} onChange={(e) => set("objetosPerdidos", e.target.value)} />}</Field>
-              </div>
-            </Section>
-          </div>
-        </Card>
-
-        <Card>
-          <StepHeader n={4} title="Firma" description="La de tu perfil o una solo para este evento." />
-          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
-            <div className="grid h-20 w-44 shrink-0 place-items-center rounded-md border border-border bg-white">
-              {firmaEventoUrl || profile.firma ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={firmaEventoUrl ?? `data:image/png;base64,${profile.firma}`} alt="Firma para este evento" className="max-h-16 max-w-[160px] object-contain" />
-              ) : (
-                <span className="text-[12px] text-zinc-400">Sin firma</span>
-              )}
+              <Field label="Fecha" error={errors.fecha}>
+                {(id) => <Input id={id} type="date" value={draft.fecha} onChange={(e) => set("fecha", e.target.value)} />}
+              </Field>
+              <Field label="Citación" error={errors.horaCitacion}>
+                {(id) => <Input id={id} type="time" value={draft.horaCitacion} onChange={(e) => set("horaCitacion", e.target.value)} />}
+              </Field>
+              <Field label="Hora del evento" error={errors.horaEvento}>
+                {(id) => <Input id={id} type="time" value={draft.horaEvento} onChange={(e) => set("horaEvento", e.target.value)} />}
+              </Field>
+              <Field label="Aforo" hint="Opcional" error={errors.aforo}>
+                {(id) => <Input id={id} inputMode="numeric" value={draft.aforo} onChange={(e) => set("aforo", e.target.value.replace(/\D/g, ""))} placeholder="500" />}
+              </Field>
             </div>
-            <div className="flex-1 text-[13px]">
-              {firmaEventoUrl ? (
-                <p>Se usará esta firma solo en este evento.</p>
-              ) : profile.firma ? (
-                <p className="text-muted">Se usará la firma de tu perfil.</p>
-              ) : (
-                <p className="text-warn">
-                  No tienes firma: las planillas saldrán con el espacio en blanco.{" "}
-                  <Link href="/ajustes" className="font-medium underline underline-offset-2">
-                    Agrégala en Ajustes
-                  </Link>
-                  .
-                </p>
-              )}
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Button type="button" size="sm" icon={<IconPencil />} onClick={() => setFirmando(true)}>
-                  Firmar este evento
-                </Button>
-                {firmaEvento && (
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setFirmaEvento(null)}>
-                    Usar la de mi perfil
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </Card>
+          </Paso>
 
-        <Card>
-          <StepHeader
-            n={5}
-            title="Mis horas"
-            description={
-              filaIdx >= 0 ? (
-                <>
-                  Tu fila: <span className="font-medium text-fg">{draft.personas[filaIdx].nombre}</span>
-                </>
-              ) : draft.personas.length ? (
-                "No encontramos tu nombre en la tabla. Elige tu fila o escribe tus horas."
-              ) : (
-                "Registra tus horas de este evento."
-              )
-            }
-            action={
-              <label className="flex items-center gap-2 text-[13px]">
-                <input type="checkbox" checked={mine.guardar} onChange={(e) => setM({ guardar: e.target.checked })} className="h-4 w-4 accent-[rgb(var(--brand))]" />
-                Guardar
-              </label>
-            }
-          />
-          {mine.guardar && (
-            <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
-              {draft.personas.length > 0 && (
-                <Field label="Tu fila en el registro">
-                  {(id) => (
-                    <Select id={id} value={mine.fila} onChange={(e) => setM({ fila: e.target.value })}>
-                      <option value="">— Ninguna (escribir a mano) —</option>
-                      {draft.personas.map((p, i) => (
-                        <option key={p.key} value={p.key}>
-                          {i + 1}. {p.nombre || "(sin nombre)"} {p.cargo ? `· ${p.cargo}` : ""}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                </Field>
-              )}
-              <Field label="Lugar de trabajo" error={errors.mine}>
+          {/* 3 · Personal */}
+          <Paso
+            id="paso-personal"
+            n={3}
+            title="Personal"
+            description={`Escribe la llegada o las horas de cada persona; lo demás se calcula. A = base · AC = base + ${extras.ac} · C = base + ${extras.c} · ${formatCOP(defaults.valorHora)} la hora.`}
+          >
+            <div className="mb-4 flex flex-wrap items-start gap-4">
+              <Field className="w-28" label="Horas base" hint={baseValida ? `AC +${extras.ac} · C +${extras.c}` : undefined} error={baseValida ? null : "Entre 1 y 16"}>
                 {(id) => (
-                  <Select id={id} value={mine.placeId} onChange={(e) => setM({ placeId: e.target.value })} disabled={!places}>
-                    {!places && <option>Cargando…</option>}
-                    {places?.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre}
-                      </option>
-                    ))}
-                  </Select>
+                  <Input id={id} inputMode="decimal" className="tabular" value={draft.base} onChange={(e) => set("base", e.target.value.replace(/[^\d.,:hm ]/gi, ""))} placeholder="4" />
                 )}
               </Field>
-              {filaIdx >= 0 ? (
-                <p className="tabular text-[13px] text-muted sm:col-span-2">
-                  {calc.filas[filaIdx]?.llegada ? `${hora12(calc.filas[filaIdx].llegada, true)} – ${hora12(calc.filas[filaIdx].salida, true)} · ` : ""}
-                  {formatDuracion(calc.filas[filaIdx]?.horas)} · {formatCOP(calc.filas[filaIdx]?.valor)} (se toma de tu fila)
+              <Field className="w-36" label="Salida de todos" error={errors.salida}>
+                {(id) => (
+                  <Input id={id} type="time" value={salida} onChange={(e) => setDraft((d) => (d ? { ...d, salida: e.target.value, salidaEditada: true } : d))} />
+                )}
+              </Field>
+              {draft.salidaEditada && sugerida && sugerida !== salida && (
+                <p className="max-w-xs pt-6 text-xs text-muted">
+                  Sugerida: {hora12(sugerida)} ({draft.salidaArchivo ? "la del registro" : `citación + ${base} h`}).{" "}
+                  <button type="button" className="font-medium text-fg underline underline-offset-2" onClick={() => setDraft((d) => (d ? { ...d, salidaEditada: false } : d))}>
+                    Usar la sugerida
+                  </button>
                 </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-4">
-                  <Field label="Llegada">{(id) => <Input id={id} type="time" value={mine.llegada} onChange={(e) => setM({ llegada: e.target.value })} />}</Field>
-                  <Field label="Salida">{(id) => <Input id={id} type="time" value={mine.salida} onChange={(e) => setM({ salida: e.target.value })} />}</Field>
-                  <Field label="Horas">{(id) => <Input id={id} inputMode="decimal" value={mine.horas} placeholder={String(diffHoras(mine.llegada || null, mine.salida || null) ?? "")} onChange={(e) => setM({ horas: e.target.value })} />}</Field>
-                  <Field label="Valor">{(id) => <Input id={id} inputMode="numeric" value={mine.valor} onChange={(e) => setM({ valor: e.target.value.replace(/\D/g, "") })} />}</Field>
-                </div>
               )}
             </div>
-          )}
-        </Card>
+            {alertas.length > 0 && (
+              <Notice className="mb-4">
+                {alertas.map((a) => (
+                  <p key={a}>{a}</p>
+                ))}
+              </Notice>
+            )}
+            <Card className="px-0 py-1 sm:px-2">
+              <RegistroTable
+                rows={draft.personas}
+                filas={calc.filas}
+                totals={{ horas: calc.totalHoras, valor: calc.totalValor }}
+                onChange={(rows) => set("personas", rows)}
+                highlight={mine.fila}
+                base={base}
+                extras={extras}
+                ubicaciones={defaults.ubicaciones}
+                salida={salida || null}
+              />
+            </Card>
+            {errors.personas && <p className="mt-2 text-xs text-danger">{errors.personas}</p>}
+          </Paso>
+
+          {/* 4 · Cierre */}
+          <Paso id="paso-cierre" n={4} title="Cierre" description="Llaves, evaluación, colillas, firma y tus horas. Vienen con los valores de Ajustes.">
+            <div className="divide-y divide-border">
+              <Sub title="Llaves">
+                <Field label="Nota" hint="Va en la línea NOTA: de LLAVES.">
+                  {(id) => <Textarea id={id} rows={2} value={draft.notaLlaves} onChange={(e) => set("notaLlaves", e.target.value)} />}
+                </Field>
+              </Sub>
+
+              <Sub title="Evaluación del evento">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Reclamos y sugerencias del público">
+                    {(id) => <Textarea id={id} rows={2} value={draft.reclamos} onChange={(e) => set("reclamos", e.target.value)} />}
+                  </Field>
+                  <Field label="Sugerencias del coordinador">
+                    {(id) => <Textarea id={id} rows={2} value={draft.sugerencias} onChange={(e) => set("sugerencias", e.target.value)} />}
+                  </Field>
+                  <Field label="Aspectos a mejorar" hint="Vacío = línea para llenar a mano.">
+                    {(id) => <Textarea id={id} rows={2} value={draft.aspectosMejorar} onChange={(e) => set("aspectosMejorar", e.target.value)} />}
+                  </Field>
+                  <Field label="Aspectos que deben permanecer" hint="Vacío = línea para llenar a mano.">
+                    {(id) => <Textarea id={id} rows={2} value={draft.aspectosPermanecer} onChange={(e) => set("aspectosPermanecer", e.target.value)} />}
+                  </Field>
+                </div>
+                <div className="mt-5 space-y-2">
+                  <p className="text-[12px] font-medium uppercase tracking-[0.05em] text-muted">Notas</p>
+                  {draft.notas.map((n, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="tabular w-4 text-right text-[13px] text-faint">{i + 1}</span>
+                      <Input value={n} onChange={(e) => set("notas", draft.notas.map((x, j) => (j === i ? e.target.value : x)))} aria-label={`Nota ${i + 1}`} />
+                      <button
+                        type="button"
+                        onClick={() => set("notas", draft.notas.filter((_, j) => j !== i))}
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-ctl text-faint hover:bg-subtle hover:text-danger"
+                        aria-label={`Quitar nota ${i + 1}`}
+                      >
+                        <IconTrash width={14} height={14} />
+                      </button>
+                    </div>
+                  ))}
+                  <Button type="button" size="sm" variant="ghost" icon={<IconPlus />} onClick={() => set("notas", [...draft.notas, ""])}>
+                    Agregar nota
+                  </Button>
+                </div>
+              </Sub>
+
+              <Sub title="Colillas">
+                {!showLocs ? (
+                  <button type="button" className="text-[13px] text-brand underline decoration-brand/40 underline-offset-4" onClick={() => setShowLocs(true)}>
+                    Agregar boletas y valor por localidad (opcional)
+                  </button>
+                ) : (
+                  <div className="-mx-4 overflow-x-auto sm:mx-0">
+                    <table className="w-full min-w-[560px] text-[13px]">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="th pl-4 font-medium sm:pl-0">Localidad</th>
+                          <th className="th w-28 font-medium">Boletas</th>
+                          <th className="th w-32 font-medium">Valor</th>
+                          <th className="th w-32 text-right font-medium">Total</th>
+                          <th className="th pl-3 font-medium">Observaciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {LOCS.map(({ key, label }) => {
+                          const l = draft.localidades[key];
+                          const b = toInt(l.boletas);
+                          const v = toInt(l.valor);
+                          const setL = (patch: Partial<typeof l>) => set("localidades", { ...draft.localidades, [key]: { ...l, ...patch } });
+                          return (
+                            <tr key={key} className="border-b border-border/60">
+                              <td className="py-1.5 pl-4 sm:pl-0">{label}</td>
+                              <td className="py-1.5 pr-2">
+                                <Input inputMode="numeric" className="tabular h-8 sm:h-8" value={l.boletas} onChange={(e) => setL({ boletas: e.target.value.replace(/\D/g, "") })} aria-label={`Boletas ${label}`} />
+                              </td>
+                              <td className="py-1.5 pr-2">
+                                <Input inputMode="numeric" className="tabular h-8 sm:h-8" value={l.valor} onChange={(e) => setL({ valor: e.target.value.replace(/\D/g, "") })} placeholder="$" aria-label={`Valor ${label}`} />
+                              </td>
+                              <td className="tabular py-1.5 text-right">{b != null && v != null ? formatCOP(b * v) : "—"}</td>
+                              <td className="py-1.5 pl-3">
+                                <Input className="h-8 sm:h-8" value={l.observacion} maxLength={120} onChange={(e) => setL({ observacion: e.target.value })} aria-label={`Observaciones ${label}`} />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Sub>
+
+              <Sub title="WhatsApp">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Observaciones">{(id) => <Textarea id={id} rows={2} value={draft.observaciones} onChange={(e) => set("observaciones", e.target.value)} />}</Field>
+                  <Field label="Objetos perdidos">{(id) => <Textarea id={id} rows={2} value={draft.objetosPerdidos} onChange={(e) => set("objetosPerdidos", e.target.value)} />}</Field>
+                </div>
+              </Sub>
+
+              <Sub title="Firma">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="grid h-20 w-44 shrink-0 place-items-center rounded-ctl border border-border bg-white">
+                    {firmaEventoUrl || profile.firma ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={firmaEventoUrl ?? `data:image/png;base64,${profile.firma}`} alt="Firma para este evento" className="max-h-16 max-w-[160px] object-contain" />
+                    ) : (
+                      <span className="text-[12px] text-stone-500">Sin firma</span>
+                    )}
+                  </div>
+                  <div className="flex-1 text-[13px]">
+                    {firmaEventoUrl ? (
+                      <p>Esta firma se usa solo en este evento.</p>
+                    ) : profile.firma ? (
+                      <p className="text-muted">Se usa la firma de tu perfil.</p>
+                    ) : (
+                      <p className="text-warn">
+                        No tienes firma: las planillas salen con el espacio en blanco.{" "}
+                        <Link href="/ajustes" className="font-medium underline underline-offset-2">
+                          Agrégala en Ajustes
+                        </Link>
+                        .
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button type="button" size="sm" icon={<IconPencil />} onClick={() => setFirmando(true)}>
+                        Firmar este evento
+                      </Button>
+                      {firmaEvento && (
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setFirmaEvento(null)}>
+                          Usar la de mi perfil
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Sub>
+
+              <Sub
+                title="Mis horas"
+                action={
+                  <label className="flex items-center gap-2 text-[13px]">
+                    <input type="checkbox" checked={mine.guardar} onChange={(e) => setM({ guardar: e.target.checked })} className="h-4 w-4 accent-[rgb(var(--brand))]" />
+                    Guardar en Mis horas
+                  </label>
+                }
+              >
+                <p className="mb-4 text-[13px] text-muted">
+                  {filaIdx >= 0 ? (
+                    <>
+                      Tu fila: <span className="font-medium text-fg">{draft.personas[filaIdx].nombre}</span>
+                    </>
+                  ) : draft.personas.length ? (
+                    "No encontramos tu nombre en la tabla. Elige tu fila o escribe tus horas."
+                  ) : (
+                    "Registra tus horas de este evento."
+                  )}
+                </p>
+                {mine.guardar && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {draft.personas.length > 0 && (
+                      <Field label="Tu fila en el registro">
+                        {(id) => (
+                          <Select id={id} value={mine.fila} onChange={(e) => setM({ fila: e.target.value })}>
+                            <option value="">— Ninguna (escribir a mano) —</option>
+                            {draft.personas.map((p, i) => (
+                              <option key={p.key} value={p.key}>
+                                {i + 1}. {p.nombre || "(sin nombre)"} {p.cargo ? `· ${p.cargo}` : ""}
+                              </option>
+                            ))}
+                          </Select>
+                        )}
+                      </Field>
+                    )}
+                    <Field label="Lugar de trabajo" error={errors.mine}>
+                      {(id) => (
+                        <Select id={id} value={mine.placeId} onChange={(e) => setM({ placeId: e.target.value })} disabled={!places}>
+                          {!places && <option>Cargando…</option>}
+                          {places?.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.nombre}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+                    </Field>
+                    {filaIdx >= 0 ? (
+                      <p className="tabular text-[13px] text-muted sm:col-span-2">
+                        {calc.filas[filaIdx]?.llegada ? `${hora12(calc.filas[filaIdx].llegada, true)} – ${hora12(calc.filas[filaIdx].salida, true)} · ` : ""}
+                        {formatDuracion(calc.filas[filaIdx]?.horas)} · {formatCOP(calc.filas[filaIdx]?.valor)} (sale de tu fila)
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-4">
+                        <Field label="Llegada">{(id) => <Input id={id} type="time" value={mine.llegada} onChange={(e) => setM({ llegada: e.target.value })} />}</Field>
+                        <Field label="Salida">{(id) => <Input id={id} type="time" value={mine.salida} onChange={(e) => setM({ salida: e.target.value })} />}</Field>
+                        <Field label="Horas">
+                          {(id) => <Input id={id} inputMode="decimal" value={mine.horas} placeholder={String(diffHoras(mine.llegada || null, mine.salida || null) ?? "")} onChange={(e) => setM({ horas: e.target.value })} />}
+                        </Field>
+                        <Field label="Valor">{(id) => <Input id={id} inputMode="numeric" value={mine.valor} onChange={(e) => setM({ valor: e.target.value.replace(/\D/g, "") })} />}</Field>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Sub>
+            </div>
+          </Paso>
+        </div>
+
+        {/* Resumen (escritorio) */}
+        <aside className="hidden xl:block">
+          <div className="sticky top-20 space-y-6 border-l border-border pl-6">
+            {resumen}
+            <div className="border-t border-border pt-5">
+              <Button type="submit" variant="primary" size="lg" loading={generating} className="w-full">
+                {generating ? "Generando…" : "Generar planillas"}
+              </Button>
+              <p className="mt-2 text-[12px] leading-relaxed text-muted">REGISTRO · LLAVES · COLILLAS · EVALUACIÓN</p>
+            </div>
+          </div>
+        </aside>
       </div>
 
-      <div className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-20 -mx-4 mt-6 border-t border-border bg-bg/90 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-lg sm:border md:bottom-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="hidden min-w-0 flex-wrap gap-1 text-[13px] text-muted sm:flex">
-            <Badge>REGISTRO</Badge> <Badge>LLAVES</Badge> <Badge>COLILLAS</Badge> <Badge>EVALUACIÓN</Badge>
+      {/* Barra de generar (móvil y pantallas medianas) */}
+      <div className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-bg/95 px-4 py-3 backdrop-blur md:bottom-0 md:left-[208px] xl:hidden">
+        <div className="mx-auto flex max-w-[1080px] items-center justify-between gap-4 sm:px-4">
+          <div className="min-w-0">
+            <p className="tabular truncate font-serif text-lg leading-tight">{formatCOP(calc.totalValor)}</p>
+            <p className="tabular truncate text-[12px] text-muted">
+              {formatDuracion(calc.totalHoras)} · {draft.personas.length} personas{nAvisos ? ` · ${nAvisos} por revisar` : ""}
+            </p>
           </div>
-          <Button type="submit" variant="primary" loading={generating} className="w-full sm:w-auto">
+          <Button type="submit" variant="primary" size="lg" loading={generating} className="shrink-0">
             {generating ? "Generando…" : "Generar planillas"}
           </Button>
         </div>
       </div>
+      <div className="h-24 xl:hidden" aria-hidden />
 
       <Modal open={firmando} onClose={() => setFirmando(false)} title="Firmar este evento">
         {firmando && (
@@ -675,36 +767,42 @@ export default function NuevaPlanillaPage() {
   );
 }
 
-function Notice({ children }: { children: ReactNode }) {
-  return (
-    <div className="mb-5 flex gap-3 rounded-lg border border-warn/25 bg-warn/5 px-4 py-3 text-[13px]">
-      <IconAlert className="mt-0.5 shrink-0 text-warn" />
-      <div>{children}</div>
-    </div>
-  );
+const PASOS = [
+  { id: "paso-archivo", label: "Archivo", desc: "El registro de personal en .docx o .pdf." },
+  { id: "paso-evento", label: "Evento", desc: "Nombre, fecha, citación y aforo." },
+  { id: "paso-personal", label: "Personal", desc: "Llegadas, horas y valor de cada persona." },
+  { id: "paso-cierre", label: "Cierre", desc: "Llaves, evaluación, colillas, firma y tus horas." },
+] as const;
+
+function hoyLargo() {
+  const s = new Intl.DateTimeFormat("es-CO", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/** Paso numerado: número en serif, título y contenido sin caja. */
+function Paso({ id, n, title, description, children }: { id: string; n: number; title: string; description?: ReactNode; children: ReactNode }) {
   return (
-    <div className={cx("px-4 py-4 sm:px-5")}>
-      <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-faint">{title}</p>
-      {children}
-    </div>
-  );
-}
-
-/** Encabezado de paso: número en rojo, título destacado y descripción. */
-function StepHeader({ n, title, description, action }: { n: number; title: string; description?: ReactNode; action?: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
-      <div className="flex min-w-0 items-start gap-3">
-        <span className="tabular grid h-8 w-8 shrink-0 place-items-center rounded-md bg-brand text-sm font-bold text-brand-fg">{n}</span>
-        <div className="min-w-0 pt-0.5">
-          <h2 className="text-base font-bold leading-tight">{title}</h2>
-          {description && <p className="mt-1 text-[13px] text-muted">{description}</p>}
+    <section id={id} className={cx("scroll-mt-32 pb-10", n > 1 && "border-t border-border pt-8")}>
+      <div className="mb-5 flex gap-4">
+        <span className="tabular w-6 shrink-0 pt-0.5 font-serif text-[22px] leading-none text-brand">{n}</span>
+        <div className="min-w-0">
+          <h2 className="font-serif text-[22px] font-medium leading-none">{title}</h2>
+          {description && <p className="mt-2 max-w-prose text-[13px] text-muted">{description}</p>}
         </div>
       </div>
-      {action && <div className="shrink-0 pl-11 sm:pl-0">{action}</div>}
+      <div className="sm:pl-10">{children}</div>
+    </section>
+  );
+}
+
+function Sub({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="py-5 first:pt-0">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="eyebrow text-fg">{title}</p>
+        {action}
+      </div>
+      {children}
     </div>
   );
 }

@@ -165,15 +165,15 @@ export const SignatureCanvas = forwardRef<SignatureCanvasHandle, { onChange?: (e
     }));
 
     return (
-      <div className="relative overflow-hidden rounded-lg border border-border bg-white">
+      <div className="relative overflow-hidden rounded-box border border-border bg-white">
         <canvas
           ref={canvasRef}
           className="block w-full cursor-crosshair select-none"
           style={{ height, touchAction: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", userSelect: "none" } as React.CSSProperties}
           aria-label="Lienzo para dibujar la firma"
         />
-        <div className="pointer-events-none absolute inset-x-6 bottom-9 border-b border-dashed border-zinc-300" />
-        <span className="pointer-events-none absolute bottom-3 left-6 text-[11px] text-zinc-400">Firma aquí</span>
+        <div className="pointer-events-none absolute inset-x-6 bottom-9 border-b border-dashed border-stone-300" />
+        <span className="pointer-events-none absolute bottom-3 left-6 text-[11px] text-stone-400">Firma aquí</span>
       </div>
     );
   },

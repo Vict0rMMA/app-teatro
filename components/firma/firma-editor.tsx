@@ -17,7 +17,7 @@ function Preview({ blob }: { blob: Blob }) {
     return () => URL.revokeObjectURL(u);
   }, [blob]);
   return (
-    <div className={cx("grid h-36 place-items-center rounded-lg border border-border p-3", checker)}>
+    <div className={cx("grid h-36 place-items-center rounded-box border border-border p-3", checker)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {url && <img src={url} alt="Vista previa de la firma" className="max-h-full max-w-full object-contain" />}
     </div>
@@ -54,7 +54,7 @@ export function FirmaEditor({
 
   return (
     <div>
-      <div role="tablist" className="mb-4 inline-flex rounded-md border border-border bg-subtle p-0.5 text-[13px]">
+      <div role="tablist" className="mb-4 inline-flex rounded-ctl border border-border bg-subtle p-0.5 text-[13px]">
         {(["dibujar", "subir"] as const).map((t) => (
           <button
             key={t}
@@ -65,7 +65,7 @@ export function FirmaEditor({
               setPreview(null);
               setError(null);
             }}
-            className={cx("rounded px-3 py-1", tab === t ? "bg-surface font-medium text-fg shadow-card" : "text-muted hover:text-fg")}
+            className={cx("rounded px-3 py-1", tab === t ? "bg-surface font-medium text-fg ring-1 ring-border" : "text-muted hover:text-fg")}
           >
             {t === "dibujar" ? "Dibujar" : "Subir imagen"}
           </button>
@@ -73,7 +73,7 @@ export function FirmaEditor({
       </div>
 
       {preview ? (
-        <div className="animate-fade-up space-y-3">
+        <div className="space-y-3">
           <p className="text-[13px] text-muted">Así se verá en las planillas (fondo transparente).</p>
           <Preview blob={preview} />
           <div className="flex flex-wrap justify-end gap-2">
@@ -193,12 +193,12 @@ function UploadTab({ onReady, onError, onCancel }: { onReady: (b: Blob) => void;
       <input ref={gallery} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => (pick(e.target.files?.[0]), (e.target.value = ""))} />
 
       {loading ? (
-        <div className="grid h-36 place-items-center rounded-lg border border-border text-muted">
+        <div className="grid h-36 place-items-center rounded-box border border-border text-muted">
           <Spinner />
         </div>
       ) : source ? (
         <>
-          <div className={cx("grid h-40 place-items-center rounded-lg border border-border p-3", checker)}>
+          <div className={cx("grid h-40 place-items-center rounded-box border border-border p-3", checker)}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {previewUrl && <img src={previewUrl} alt="Firma sin fondo" className="max-h-full max-w-full object-contain" />}
           </div>
@@ -223,7 +223,7 @@ function UploadTab({ onReady, onError, onCancel }: { onReady: (b: Blob) => void;
           </label>
         </>
       ) : (
-        <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-[13px] text-muted">
+        <p className="rounded-box border border-dashed border-border px-4 py-8 text-center text-[13px] text-muted">
           Firma en una hoja blanca con tinta oscura y tómale una foto de cerca, o elige un PNG/JPG.
         </p>
       )}

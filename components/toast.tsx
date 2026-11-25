@@ -1,10 +1,10 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
-import { IconAlert, IconCheck, IconX } from "./icons";
+import { IconX } from "./icons";
 import { cx } from "./ui";
 
-type Tone = "success" | "error" | "info";
+type Tone = "success" | "error" | "info" | "warn";
 interface Toast {
   id: number;
   tone: Tone;
@@ -16,6 +16,7 @@ interface ToastApi {
   success: (title: string, description?: string) => void;
   error: (title: string, description?: string) => void;
   info: (title: string, description?: string) => void;
+  warn: (title: string, description?: string) => void;
 }
 
 const Ctx = createContext<ToastApi | null>(null);
@@ -29,7 +30,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (tone: Tone, title: string, description?: string) => {
       const id = next.current++;
       setToasts((t) => [...t.slice(-3), { id, tone, title, description }]);
-      setTimeout(() => dismiss(id), tone === "error" ? 7000 : 4000);
+      setTimeout(() => dismiss(id), tone === "error" || tone === "warn" ? 7000 : 4000);
     },
     [dismiss],
   );
@@ -39,6 +40,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       success: (t, d) => push("success", t, d),
       error: (t, d) => push("error", t, d),
       info: (t, d) => push("info", t, d),
+      warn: (t, d) => push("warn", t, d),
     }),
     [push],
   );
@@ -54,18 +56,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             role={t.tone === "error" ? "alert" : "status"}
-            className="pointer-events-auto flex w-full max-w-sm animate-toast-in items-start gap-3 rounded-lg border border-border bg-surface px-3.5 py-3 shadow-pop"
+            className="pointer-events-auto flex w-full max-w-sm animate-toast-in items-start gap-3 rounded-box border border-border bg-surface px-3.5 py-3 shadow-pop"
           >
             <span
+              aria-hidden
               className={cx(
-                "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full",
-                t.tone === "success" && "bg-ok/15 text-ok",
-                t.tone === "error" && "bg-danger/15 text-danger",
-                t.tone === "info" && "bg-subtle text-muted",
+                "mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full",
+                t.tone === "success" && "bg-ok",
+                t.tone === "error" && "bg-danger",
+                t.tone === "warn" && "bg-warn",
+                t.tone === "info" && "bg-muted",
               )}
-            >
-              {t.tone === "error" ? <IconAlert width={12} height={12} /> : <IconCheck width={12} height={12} />}
-            </span>
+            />
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-medium">{t.title}</p>
               {t.description && <p className="mt-0.5 text-[13px] text-muted">{t.description}</p>}

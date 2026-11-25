@@ -42,7 +42,7 @@ export function horasDe(p: PersonaDraft, base: number, extras: Extras): number |
   return parseDuracion(p.horas);
 }
 
-const cell = "h-8 rounded border-transparent bg-transparent px-2 text-[13px] hover:border-border focus:border-fg/30 focus:bg-surface";
+const cell = "h-8 rounded-ctl border-transparent bg-transparent px-2 text-[13px] hover:border-border focus:border-fg/30 focus:bg-surface";
 
 /**
  * Tabla editable del registro. Horas, P.P, DESEMP y observación se editan; llegada,
@@ -79,7 +79,7 @@ export function RegistroTable({
       <div className="-mx-4 overflow-x-auto sm:mx-0">
         <table className="w-full min-w-[980px] border-collapse text-[13px]">
           <thead>
-            <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-faint">
+            <tr className="border-b border-border text-left text-[11px] uppercase tracking-[0.06em] text-muted">
               <th className="w-8 py-2 pl-4 font-medium sm:pl-2">N°</th>
               <th className="py-2 font-medium">Nombre</th>
               <th className="w-16 py-2 font-medium">Cargo</th>
@@ -101,7 +101,7 @@ export function RegistroTable({
               const sinHoras = h == null || h <= 0;
               const ubiNombre = ubicaciones[r.ubi.trim().toUpperCase()];
               return (
-                <tr key={r.key} className={cx("border-b border-border/70", highlight === r.key && "bg-brand-soft/50")}>
+                <tr key={r.key} className={cx("border-b border-border/60 transition-colors duration-100 hover:bg-subtle/40", highlight === r.key && "bg-brand-soft/40 hover:bg-brand-soft/50")}>
                   <td className="tabular py-1 pl-4 text-faint sm:pl-2">{i + 1}</td>
                   <td className="py-1 pr-1">
                     {r.delArchivo ? (
@@ -169,7 +169,7 @@ export function RegistroTable({
                     <button
                       type="button"
                       onClick={() => onChange(rows.filter((x) => x.key !== r.key))}
-                      className="grid h-7 w-7 place-items-center rounded text-faint hover:bg-subtle hover:text-danger"
+                      className="grid h-7 w-7 place-items-center rounded-ctl text-faint hover:bg-subtle hover:text-danger"
                       aria-label={`Quitar a ${r.nombre || `la fila ${i + 1}`}`}
                     >
                       <IconTrash width={14} height={14} />
@@ -181,13 +181,13 @@ export function RegistroTable({
           </tbody>
           {rows.length > 0 && (
             <tfoot>
-              <tr className="text-[13px] font-medium">
-                <td colSpan={4} className="py-2.5 pl-4 text-muted sm:pl-2">
+              <tr className="text-[13px]">
+                <td colSpan={4} className="py-3 pl-4 text-muted sm:pl-2">
                   Total · {rows.length} {rows.length === 1 ? "persona" : "personas"}
                 </td>
-                <td className="tabular whitespace-nowrap py-2.5 pl-2">{formatDuracion(totals.horas)}</td>
+                <td className="tabular whitespace-nowrap py-3 pl-2 font-serif text-[17px]">{formatDuracion(totals.horas)}</td>
                 <td colSpan={2} />
-                <td className="tabular py-2.5 pr-1 text-right">{formatCOP(totals.valor)}</td>
+                <td className="tabular whitespace-nowrap py-3 pr-1 text-right font-serif text-[17px]">{formatCOP(totals.valor)}</td>
                 <td colSpan={4} />
               </tr>
             </tfoot>

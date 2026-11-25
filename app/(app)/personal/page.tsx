@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/components/auth-provider";
-import { IconChevron, IconSearch, IconUsers } from "@/components/icons";
-import { Badge, Card, EmptyState, Input, PageHeader, Skeleton, cx } from "@/components/ui";
+import { IconChevron, IconSearch } from "@/components/icons";
+import { Badge, EmptyState, Input, PageHeader, Skeleton, cx } from "@/components/ui";
 import { getAllStaff, type StaffDoc } from "@/lib/data";
 import { fechaCorta, formatCOP, normalize, formatDuracion } from "@/lib/format";
 
@@ -54,29 +54,31 @@ export default function PersonalPage() {
 
   return (
     <>
-      <PageHeader title="Personal" description="Busca a una persona: en qué eventos trabajó, horas acumuladas y total pagado." />
+      <PageHeader
+        title="Personal"
+        description={staff === null ? "Cargando…" : people.length ? `${people.length} personas en tus planillas. Busca a alguien para ver sus eventos, horas y pagos.` : "Quién ha trabajado contigo, evento por evento."}
+      />
 
       {staff === null ? (
         <Skeleton className="h-48 w-full" />
       ) : people.length === 0 ? (
-        <Card>
+        <div className="border-y border-border">
           <EmptyState
-            icon={<IconUsers />}
             title={error ? "No se pudo cargar el personal" : "Aún no hay personal"}
             description={
               error
                 ? "Revisa tu conexión. Si el problema sigue, el índice de Firestore puede estar creándose."
-                : "La lista se arma con el registro de personal de cada planilla que generes."
+                : "La lista se arma sola con el registro de cada planilla que generes."
             }
           />
-        </Card>
+        </div>
       ) : (
         <>
           <div className="relative mb-3">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <Input className="pl-9" placeholder={`Buscar entre ${people.length} personas`} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
           </div>
-          <Card>
+          <div className="border-y border-border">
             {filtered.length === 0 ? (
               <p className="px-5 py-10 text-center text-[13px] text-muted">Nadie con ese nombre.</p>
             ) : (
@@ -88,15 +90,15 @@ export default function PersonalPage() {
                       <button
                         onClick={() => setOpen(expanded ? null : p.key)}
                         aria-expanded={expanded}
-                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-subtle/50 sm:px-5"
+                        className="flex w-full items-center gap-3 px-1 py-3 text-left transition-colors duration-100 hover:bg-subtle/40 sm:px-2"
                       >
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{p.nombre}</p>
-                          <p className="tabular text-xs text-faint">
+                          <p className="tabular text-xs text-muted">
                             {p.eventos.length} {p.eventos.length === 1 ? "evento" : "eventos"} · {formatDuracion(p.horas)}
                           </p>
                         </div>
-                        <div className="hidden gap-1 sm:flex">
+                        <div className="hidden gap-3 sm:flex">
                           {[...p.cargos].map((c) => (
                             <Badge key={c} tone={c === "C" ? "brand" : "neutral"}>
                               {c}
@@ -104,13 +106,13 @@ export default function PersonalPage() {
                           ))}
                         </div>
                         <span className="tabular w-24 text-right text-[13px] font-medium">{formatCOP(p.valor)}</span>
-                        <IconChevron className={cx("text-faint transition-transform", expanded && "rotate-90")} />
+                        <IconChevron className={cx("text-faint transition-transform duration-100", expanded && "rotate-90")} />
                       </button>
                       {expanded && (
-                        <ul className="animate-fade-up border-t border-border bg-subtle/40">
+                        <ul className="border-t border-border bg-subtle/40">
                           {p.eventos.map((s) => (
                             <li key={`${s.eventId}-${s.id}`}>
-                              <Link href={`/planillas/${s.eventId}`} className="flex items-center gap-3 px-4 py-2 text-[13px] hover:bg-subtle sm:px-5 sm:pl-8">
+                              <Link href={`/planillas/${s.eventId}`} className="flex items-center gap-3 px-2 py-2 text-[13px] hover:bg-subtle sm:pl-6">
                                 <span className="tabular w-20 shrink-0 text-muted">{fechaCorta(s.fecha)}</span>
                                 <span className="min-w-0 flex-1 truncate">{s.evento}</span>
                                 {s.cargo && <Badge>{s.cargo}</Badge>}
@@ -126,7 +128,7 @@ export default function PersonalPage() {
                 })}
               </ul>
             )}
-          </Card>
+          </div>
         </>
       )}
     </>

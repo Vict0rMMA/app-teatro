@@ -16,7 +16,7 @@ import { withDefaults, type Defaults } from "@/lib/schemas";
 export default function AjustesPage() {
   return (
     <>
-      <PageHeader title="Ajustes" />
+      <PageHeader title="Ajustes" description="Tu perfil, los valores que se llenan solos y tus lugares de trabajo." />
       <div className="space-y-5">
         <PerfilCard />
         <DefaultsCard />
@@ -182,7 +182,7 @@ function UbicacionesCard() {
       <CardHeader title="Ubicaciones (UBI)" description="Qué significa cada letra de la columna UBI. Se ve al pasar el cursor sobre la letra en el registro." />
       <form onSubmit={save} className="p-4 sm:p-5">
         <div className="space-y-2">
-          <div className="grid grid-cols-[72px_1fr_32px] gap-2 text-[11px] font-bold uppercase tracking-wide text-faint">
+          <div className="grid grid-cols-[72px_1fr_32px] gap-2 text-[11px] font-medium uppercase tracking-[0.06em] text-muted">
             <span>Letra</span>
             <span>Ubicación</span>
             <span />
@@ -246,7 +246,7 @@ function CoordinadoresCard() {
       <form onSubmit={save} className="p-4 sm:p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           {grupos.map((g, i) => (
-            <div key={i} className="space-y-2 rounded-md border border-border p-3">
+            <div key={i} className="space-y-2 rounded-ctl border border-border p-3">
               <div className="flex items-center gap-2">
                 <Input value={g.grupo} maxLength={30} placeholder="Grupo (ej. OPC)" className="font-bold uppercase" onChange={(e) => setG(i, { grupo: e.target.value })} aria-label={`Grupo ${i + 1}`} />
                 <button

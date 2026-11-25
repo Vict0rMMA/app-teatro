@@ -6,7 +6,8 @@ import { withDefaults } from "@/lib/schemas";
 import { saveBlob, usePlaces } from "@/components/hooks";
 import { IconChevron, IconDownload, IconPencil, IconPlus, IconTrash } from "@/components/icons";
 import { useToast } from "@/components/toast";
-import { Badge, Button, Field, Input, Modal, Select, Skeleton, cx } from "@/components/ui";
+import { Badge, Button, Field, Input, Modal, Notice, Select, Skeleton, cx } from "@/components/ui";
+import { COLOR_DIA, estadoDia, mensajeDia } from "@/lib/registros";
 import { deleteWorkLog, saveWorkLog, watchWorkLogs, type WorkLog } from "@/lib/data";
 import { DIAS, MESES, formatCOP, hora12, normalize, formatDuracion } from "@/lib/format";
 
@@ -96,6 +97,15 @@ export default function HorasPage() {
     return m;
   }, [delMes]);
 
+  // Horas por fecha de todos los turnos (sin filtros): base de los avisos de más de 8 h.
+  const horasDia = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of logs ?? []) m.set(l.fecha, (m.get(l.fecha) ?? 0) + (l.horas ?? 0));
+    return m;
+  }, [logs]);
+  const totalDelDia = (fecha: string, horas: number, sinId?: string) =>
+    (logs ?? []).filter((l) => l.fecha === fecha && l.id !== sinId).reduce((a, l) => a + (l.horas ?? 0), 0) + horas;
+
   function moveMonth(delta: number) {
     setYm(({ y, m }) => {
       const d = new Date(y, m + delta, 1);
@@ -161,7 +171,10 @@ export default function HorasPage() {
       form.id,
     );
     synced.catch(() => toast.error("No se pudo sincronizar un registro", "Revisa los datos e intenta de nuevo."));
-    toast.success(form.id ? "Registro actualizado" : "Horas guardadas", navigator.onLine ? undefined : "Se sincronizará cuando vuelva la conexión.");
+    // Se guarda igual; solo se avisa si el día pasa de 8 h.
+    const totalDia = totalDelDia(form.fecha, horas, form.id);
+    if (estadoDia(totalDia) === "excedido") toast.warn("Ese día te pasaste de 8 h", mensajeDia(totalDia) ?? undefined);
+    else toast.success(form.id ? "Registro actualizado" : "Horas guardadas", navigator.onLine ? undefined : "Se sincroniza cuando vuelva la conexión.");
     const [y, m] = form.fecha.split("-").map(Number);
     setYm({ y, m: m - 1 });
     setForm(null);
@@ -195,21 +208,21 @@ export default function HorasPage() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-faint">Mis horas</p>
+          <p className="eyebrow">Mis horas</p>
           <div className="mt-1 flex items-center gap-1">
-            <button onClick={() => moveMonth(-1)} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-subtle hover:text-fg" aria-label="Mes anterior">
+            <button onClick={() => moveMonth(-1)} className="-ml-2 grid h-9 w-9 place-items-center rounded-ctl text-muted hover:bg-subtle hover:text-fg" aria-label="Mes anterior">
               <IconChevron className="rotate-180" />
             </button>
-            <h1 className="min-w-[180px] text-2xl font-bold">
+            <h1 className="min-w-[200px] font-serif text-[28px] font-medium leading-tight sm:text-[32px]">
               {MESES[ym.m]} {ym.y}
             </h1>
-            <button onClick={() => moveMonth(1)} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-subtle hover:text-fg" aria-label="Mes siguiente">
+            <button onClick={() => moveMonth(1)} className="grid h-9 w-9 place-items-center rounded-ctl text-muted hover:bg-subtle hover:text-fg" aria-label="Mes siguiente">
               <IconChevron />
             </button>
             {!isThisMonth && (
-              <button onClick={() => setYm({ y: today.getFullYear(), m: today.getMonth() })} className="ml-2 text-xs font-bold text-brand hover:underline">
+              <button onClick={() => setYm({ y: today.getFullYear(), m: today.getMonth() })} className="ml-2 text-[13px] font-medium text-brand underline-offset-2 hover:underline">
                 Hoy
               </button>
             )}
@@ -226,7 +239,7 @@ export default function HorasPage() {
       </div>
 
       {/* Cifras del mes */}
-      <div className="mb-6 grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-surface lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 border-y border-border lg:grid-cols-4">
         {[
           {
             label: "Horas",
@@ -237,10 +250,10 @@ export default function HorasPage() {
           { label: "Eventos", value: String(eventos), sub: `${porDia.size} ${porDia.size === 1 ? "día trabajado" : "días trabajados"}` },
           { label: "Promedio", value: eventos ? formatDuracion(total.horas / eventos) : "—", sub: "por evento" },
         ].map((k, i) => (
-          <div key={k.label} className={cx("px-5 py-4", i % 2 === 1 && "border-l border-border", i >= 2 && "border-t border-border lg:border-t-0", i === 2 && "lg:border-l")}>
-            <p className="text-xs text-muted">{k.label}</p>
-            <p className="tabular mt-1 text-3xl font-bold">{k.value}</p>
-            <p className="mt-1 text-xs text-faint">{k.sub}</p>
+          <div key={k.label} className={cx("py-5", i % 2 === 1 ? "border-l border-border pl-5" : "pr-5", i >= 2 && "border-t border-border lg:border-t-0", i === 2 && "lg:border-l lg:pl-5")}>
+            <p className="eyebrow">{k.label}</p>
+            <p className="tabular mt-1 font-serif text-[28px] leading-tight">{k.value}</p>
+            <p className="mt-1 text-xs text-muted">{k.sub}</p>
           </div>
         ))}
       </div>
@@ -249,7 +262,7 @@ export default function HorasPage() {
         {/* Turnos */}
         <section className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <h2 className="w-full text-sm font-bold sm:mr-auto sm:w-auto">Turnos</h2>
+            <h2 className="w-full font-serif text-xl font-medium sm:mr-auto sm:w-auto">Turnos</h2>
             <div className="w-full sm:w-52">
             <Select className="h-8 text-[13px]" value={lugar} onChange={(e) => setLugar(e.target.value)} aria-label="Filtrar por lugar">
               <option value="">Todos los lugares</option>
@@ -268,25 +281,26 @@ export default function HorasPage() {
           {logs === null ? (
             <Skeleton className="h-40 w-full" />
           ) : delMes.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border px-6 py-10 text-center">
-              <p className="text-sm font-bold">Sin turnos en {MESES[ym.m].toLowerCase()}</p>
+            <div className="border-y border-border px-6 py-10 text-center">
+              <p className="font-serif text-lg">Sin turnos en {MESES[ym.m].toLowerCase()}</p>
               <p className="mt-1 text-[13px] text-muted">Se agregan solos al generar una planilla, o escríbelos a mano.</p>
-              <button onClick={() => openNew()} className="mt-3 text-[13px] font-bold text-brand hover:underline">
+              <button onClick={() => openNew()} className="mt-3 text-[13px] font-medium text-brand underline-offset-2 hover:underline">
                 Agregar un turno
               </button>
             </div>
           ) : (
-            <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+            <ul className="divide-y divide-border border-y border-border">
               {delMes.map((l) => {
                 const d = new Date(`${l.fecha}T12:00:00`);
+                const diaEstado = estadoDia(horasDia.get(l.fecha) ?? 0);
                 return (
-                  <li key={l.id} className="group flex items-center gap-4 px-4 py-3">
+                  <li key={l.id} className="group flex items-center gap-4 px-1 py-3 transition-colors duration-100 hover:bg-subtle/40 sm:px-2">
                     <div className="w-11 shrink-0 text-center">
-                      <p className="text-[10px] font-bold uppercase text-brand">{DIAS[d.getDay()].slice(0, 3)}</p>
-                      <p className="tabular text-xl font-bold leading-none">{d.getDate()}</p>
+                      <p className="text-[11px] uppercase tracking-[0.06em] text-muted">{DIAS[d.getDay()].slice(0, 3)}</p>
+                      <p className={cx("tabular font-serif text-[22px] leading-none", diaEstado === "excedido" && "text-danger")}>{d.getDate()}</p>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold">
+                      <p className="truncate text-sm font-medium">
                         {l.evento || "Sin nombre"}
                         {l.pendiente && (
                           <span className="ml-2 align-middle">
@@ -299,16 +313,17 @@ export default function HorasPage() {
                         {l.paraQuien ? ` · para ${l.paraQuien}` : ""}
                         {l.llegada ? ` · ${hora12(l.llegada, true)} – ${hora12(l.salida, true)}` : ""}
                       </p>
+                      {diaEstado === "excedido" && <p className="mt-0.5 text-xs text-danger">{mensajeDia(horasDia.get(l.fecha) ?? 0)}</p>}
                     </div>
                     <div className="text-right">
-                      <p className="tabular whitespace-nowrap text-sm font-bold">{formatDuracion(l.horas)}</p>
+                      <p className="tabular whitespace-nowrap text-sm font-medium">{formatDuracion(l.horas)}</p>
                       <p className="tabular text-xs text-muted">{formatCOP(l.valor)}</p>
                     </div>
                     <div className="flex sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                      <button onClick={() => openEdit(l)} className="grid h-8 w-8 place-items-center rounded text-faint hover:bg-subtle hover:text-fg" aria-label="Editar">
+                      <button onClick={() => openEdit(l)} className="grid h-9 w-9 place-items-center rounded-ctl text-faint hover:bg-subtle hover:text-fg" aria-label="Editar">
                         <IconPencil width={14} height={14} />
                       </button>
-                      <button onClick={() => setToDelete(l)} className="grid h-8 w-8 place-items-center rounded text-faint hover:bg-subtle hover:text-danger" aria-label="Eliminar">
+                      <button onClick={() => setToDelete(l)} className="grid h-9 w-9 place-items-center rounded-ctl text-faint hover:bg-subtle hover:text-danger" aria-label="Eliminar">
                         <IconTrash width={14} height={14} />
                       </button>
                     </div>
@@ -321,10 +336,10 @@ export default function HorasPage() {
 
         <aside className="min-w-0 space-y-6">
           {/* Calendario */}
-          <section className="mx-auto w-full max-w-[320px] rounded-lg border border-border bg-surface p-4 lg:max-w-none">
+          <section className="mx-auto w-full max-w-[320px] rounded-box border border-border bg-surface p-4 lg:max-w-none">
             <div className="grid grid-cols-7 gap-1 text-center">
               {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (
-                <span key={i} className="pb-1 text-[11px] font-bold text-faint">
+                <span key={i} className="pb-1 text-[11px] font-medium text-muted">
                   {d}
                 </span>
               ))}
@@ -333,16 +348,19 @@ export default function HorasPage() {
               ))}
               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                 const h = porDia.get(day);
+                // El color sale del total del día en todos los lugares, aunque haya filtros.
+                const hDia = horasDia.get(`${mes}-${pad(day)}`) ?? 0;
                 const isToday = isThisMonth && day === today.getDate();
                 return (
                   <button
                     key={day}
                     onClick={() => openNew(`${mes}-${pad(day)}`)}
-                    title={h ? formatDuracion(h) : "Agregar turno"}
+                    title={hDia ? (mensajeDia(hDia) ?? formatDuracion(hDia)) : "Agregar turno"}
+                    aria-label={`${day} de ${MESES[ym.m].toLowerCase()}${hDia ? `, ${formatDuracion(hDia)}` : ""}${estadoDia(hDia) === "excedido" ? ", más de 8 h" : ""}`}
                     className={cx(
-                      "tabular grid aspect-square place-items-center rounded text-xs transition-colors",
-                      h ? "bg-brand font-bold text-brand-fg" : "text-muted hover:bg-subtle hover:text-fg",
-                      isToday && !h && "ring-1 ring-inset ring-brand text-fg",
+                      "tabular grid aspect-square place-items-center rounded-ctl text-xs transition-colors duration-100",
+                      h || hDia ? COLOR_DIA[estadoDia(hDia)] : "text-muted hover:bg-subtle hover:text-fg",
+                      isToday && !hDia && "text-fg ring-1 ring-inset ring-brand",
                     )}
                   >
                     {day}
@@ -350,12 +368,25 @@ export default function HorasPage() {
                 );
               })}
             </div>
-            <p className="mt-3 text-[11px] text-faint">Toca un día para agregar un turno.</p>
+            <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted">
+              <li className="flex items-center gap-1.5">
+                <span className={cx("h-2.5 w-2.5 rounded-sm", COLOR_DIA.normal)} />
+                Con horas
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className={cx("h-2.5 w-2.5 rounded-sm", COLOR_DIA.limite)} />8 h
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className={cx("h-2.5 w-2.5 rounded-sm", COLOR_DIA.excedido)} />
+                Más de 8 h
+              </li>
+            </ul>
+            <p className="mt-2 text-[11px] text-muted">Toca un día para agregar un turno.</p>
           </section>
 
           {/* Por lugar */}
           <section>
-            <h2 className="mb-3 text-sm font-bold">Por lugar</h2>
+            <h2 className="eyebrow mb-3 text-fg">Por lugar</h2>
             {porLugar.length === 0 ? (
               <p className="text-[13px] text-faint">Aún no hay horas este mes.</p>
             ) : (
@@ -364,10 +395,10 @@ export default function HorasPage() {
                   <li key={id}>
                     <div className="mb-1 flex justify-between text-[13px]">
                       <span className="truncate">{placeName.get(id) ?? "Lugar eliminado"}</span>
-                      <span className="tabular font-bold">{formatDuracion(h)}</span>
+                      <span className="tabular font-medium">{formatDuracion(h)}</span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-subtle">
-                      <div className="h-full rounded-full bg-brand" style={{ width: `${(h / maxLugar) * 100}%` }} />
+                    <div className="h-1 overflow-hidden bg-subtle">
+                      <div className="h-full bg-fg/70" style={{ width: `${(h / maxLugar) * 100}%` }} />
                     </div>
                   </li>
                 ))}
@@ -457,6 +488,15 @@ export default function HorasPage() {
               <Field label="Horas" hint="Solo horas completas; la llegada se calcula desde la salida.">{(id) => <Input id={id} inputMode="numeric" value={form.horas} placeholder="5" onChange={(e) => setF({ horas: e.target.value.replace(/\D/g, "").slice(0, 2) })} />}</Field>
               <Field label="Valor">{(id) => <Input id={id} inputMode="numeric" value={form.valor} onChange={(e) => setF({ valor: formatearNumero(e.target.value) })} placeholder="10.000" />}</Field>
             </div>
+            {(() => {
+              const t = form.horas ? totalDelDia(form.fecha, Number(form.horas), form.id) : 0;
+              const m = mensajeDia(t);
+              return m ? (
+                <Notice tone={estadoDia(t) === "excedido" ? "danger" : "warn"}>
+                  {m} Puedes guardarlo igual; la cuenta de cobro solo usa el consolidado.
+                </Notice>
+              ) : null;
+            })()}
           </form>
         )}
       </Modal>
@@ -475,7 +515,7 @@ export default function HorasPage() {
         }
       >
         <p className="text-sm text-muted">
-          ¿Eliminar las horas de <span className="font-bold text-fg">{toDelete?.evento || "este turno"}</span> del {toDelete?.fecha}?
+          ¿Eliminar las horas de <span className="font-medium text-fg">{toDelete?.evento || "este turno"}</span> del {toDelete?.fecha}?
         </p>
       </Modal>
     </>

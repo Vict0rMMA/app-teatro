@@ -7,6 +7,7 @@ const nextConfig = {
     outputFileTracingIncludes: {
       "/api/generate": ["./templates/**/*"],
       "/api/planillas/[eventId]/[file]": ["./templates/**/*"],
+      "/api/cuenta-cobro/generar": ["./plantilla/**/*"],
     },
   },
 };

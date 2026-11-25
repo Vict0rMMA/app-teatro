@@ -14,11 +14,13 @@
     "node": "22.x"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0",
     "docx-preview": "^0.4.1",
     "docxtemplater": "^3.71.1",
     "docxtemplater-image-module-free": "^1.1.1",
     "firebase": "^13.4.0",
     "firebase-admin": "^13.10.0",
+    "jszip": "^3.10.2",
     "next": "^14.2.35",
     "pdf-parse": "^1.1.1",
     "pizzip": "^3.3.0",
