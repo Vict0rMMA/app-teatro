@@ -82,16 +82,17 @@
 }
 
 /*
- * Reflector del login: un haz que barre despacio el escenario y un círculo de luz en el piso.
- * Muy tenue; con prefers-reduced-motion se queda quieto (regla global de abajo).
+ * Escenario del login: al entrar, un telón de dos hojas se abre despacio hacia los lados y queda
+ * recogido en los bordes. Detrás, un foco quieto que "respira" muy lento.
+ * Con prefers-reduced-motion la animación termina al instante (regla global de abajo).
  */
 :root {
-  --luz: 150 70 40; /* luz cálida sobre papel */
-  --luz-a: 0.09;
+  --luz: 150 70 40;
+  --luz-a: 0.08;
 }
 .dark {
   --luz: 255 226 180;
-  --luz-a: 0.11;
+  --luz-a: 0.1;
 }
 .escenario {
   position: absolute;
@@ -101,11 +102,11 @@
 }
 .foco {
   position: absolute;
-  top: -8%;
-  right: 14%;
-  width: 640px;
-  height: 108%;
-  transform-origin: 50% 0;
+  top: -6%;
+  left: 50%;
+  width: 620px;
+  height: 104%;
+  margin-left: -310px;
   background: conic-gradient(
     from 162deg at 50% 0%,
     transparent 0deg,
@@ -115,42 +116,78 @@
     transparent 36deg
   );
   filter: blur(6px);
-  animation: foco 11s ease-in-out infinite alternate;
+  opacity: 0;
+  animation: foco-entra 2.4s ease-out 2.2s forwards, foco-respira 9s ease-in-out 4.6s infinite;
 }
 .foco-piso {
   position: absolute;
-  bottom: 9%;
-  right: calc(14% + 140px);
-  width: 360px;
+  bottom: 8%;
+  left: 50%;
+  width: 380px;
   height: 70px;
+  margin-left: -190px;
   border-radius: 50%;
   background: radial-gradient(closest-side, rgb(var(--luz) / calc(var(--luz-a) * 1.6)), transparent);
   filter: blur(4px);
-  animation: foco-piso 11s ease-in-out infinite alternate;
+  opacity: 0;
+  animation: foco-entra 2.4s ease-out 2.2s forwards;
 }
-.foco-piso::after {
-  /* línea del borde del escenario */
-  content: "";
+/* Hojas del telón: pliegues verticales en rojo oscuro. */
+.telon-hoja {
   position: absolute;
-  left: -60vw;
-  right: -60vw;
-  top: 50%;
-  border-top: 1px solid rgb(var(--fg) / 0.06);
+  top: 0;
+  bottom: 0;
+  width: 50.5%;
+  background-color: #5c0f0b;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgb(0 0 0 / 0.38) 0px,
+    rgb(0 0 0 / 0.08) 14px,
+    rgb(255 255 255 / 0.07) 26px,
+    rgb(0 0 0 / 0.08) 38px,
+    rgb(0 0 0 / 0.38) 52px
+  );
+  animation: telon-abre 4.2s cubic-bezier(0.65, 0, 0.25, 1) 0.5s forwards;
 }
-@keyframes foco {
+.telon-hoja.izq {
+  left: 0;
+  transform-origin: 0 50%;
+}
+.telon-hoja.der {
+  right: 0;
+  transform-origin: 100% 50%;
+}
+/* Bambalina: franja fija arriba. */
+.telon-bambalina {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 34px;
+  background-color: #4a0c09;
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.3) 0 2px, transparent 2px 40px);
+  box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.5);
+}
+@keyframes telon-abre {
   from {
-    transform: rotate(-13deg);
+    transform: scaleX(1);
   }
   to {
-    transform: rotate(13deg);
+    transform: scaleX(0.09);
   }
 }
-@keyframes foco-piso {
-  from {
-    transform: translateX(-210px) scaleX(0.92);
-  }
+@keyframes foco-entra {
   to {
-    transform: translateX(210px) scaleX(1.05);
+    opacity: 1;
+  }
+}
+@keyframes foco-respira {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
   }
 }
 

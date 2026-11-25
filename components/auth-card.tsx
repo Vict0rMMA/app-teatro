@@ -5,7 +5,7 @@ import { ThemeToggle } from "./theme";
 
 /**
  * Pantallas de acceso. Escritorio: columna roja plana a la izquierda y el formulario a la
- * derecha, con un reflector animado muy tenue. Móvil: franja roja con el logo arriba.
+ * derecha, con un telón que se abre al entrar y un foco tenue. Móvil: franja roja con el logo arriba.
  */
 export function AuthCard({
   title,
@@ -37,10 +37,13 @@ export function AuthCard({
       </aside>
 
       <div className="relative isolate flex min-h-dvh flex-col">
-        {/* Reflector sobre el escenario (solo escritorio, decorativo) */}
+        {/* Escenario (solo escritorio, decorativo): el telón se abre y queda el foco */}
         <div aria-hidden className="escenario -z-10 hidden lg:block">
           <div className="foco" />
           <div className="foco-piso" />
+          <div className="telon-hoja izq" />
+          <div className="telon-hoja der" />
+          <div className="telon-bambalina" />
         </div>
         <div className="flex items-center justify-between bg-[#c8201a] px-6 pb-5 pt-[calc(20px+env(safe-area-inset-top))] lg:hidden">
           <Link href="/" className="rounded-ctl bg-white px-2.5 py-1.5">
