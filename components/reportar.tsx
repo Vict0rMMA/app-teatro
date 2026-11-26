@@ -133,12 +133,12 @@ export function ReportarProblema({
         aria-label="Reportar un problema"
         className={cx(
           compacto
-            ? "grid h-8 w-8 place-items-center rounded-ctl text-muted hover:bg-subtle hover:text-fg"
+            ? "grid h-10 w-10 place-items-center rounded-ctl text-muted transition-colors duration-100 active:bg-subtle hover:bg-subtle hover:text-fg"
             : "flex h-8 items-center gap-2.5 rounded-ctl px-3 text-[13px] text-faint transition-colors duration-100 hover:bg-subtle/60 hover:text-fg",
           className,
         )}
       >
-        <IconAlert width={15} height={15} />
+        <IconAlert width={compacto ? 18 : 15} height={compacto ? 18 : 15} />
         {!compacto && "Reportar un problema"}
       </button>
       <Modal

@@ -24,7 +24,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       aria-label={dark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
       className={className ?? "grid h-8 w-8 place-items-center rounded-ctl text-muted transition-colors duration-100 hover:bg-subtle hover:text-fg"}
     >
-      {dark ? <IconSun /> : <IconMoon />}
+      {dark ? <IconSun width={17} height={17} /> : <IconMoon width={17} height={17} />}
     </button>
   );
 }

@@ -35,6 +35,8 @@ function iniciales(nombre: string) {
     .toUpperCase();
 }
 
+const ICONO_MOVIL = "grid h-10 w-10 place-items-center rounded-ctl text-muted transition-colors duration-100 active:bg-subtle hover:bg-subtle hover:text-fg";
+
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 }
@@ -163,19 +165,19 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Encabezado (móvil) */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-bg/90 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:hidden">
-        <Link href={inicio} aria-label="Inicio">
-          <Logo className="h-7" />
-        </Link>
-        <div className="flex items-center gap-1">
-          <ReportarProblema compacto />
-          <ThemeToggle />
-          {/* Sin Ajustes no hay dónde cerrar sesión en el celular: botón aquí. */}
-          {!puede("ajustes") && (
-            <button onClick={signOut} aria-label="Cerrar sesión" className="grid h-8 w-8 place-items-center rounded-ctl text-muted hover:bg-subtle hover:text-fg">
-              <IconLogout width={16} height={16} />
+      <header className="sticky top-0 z-30 border-b border-border bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur md:hidden">
+        <div className="flex h-14 items-center justify-between pl-4 pr-2">
+          <Link href={inicio} aria-label="Inicio">
+            <Logo className="h-7" />
+          </Link>
+          {/* Íconos del mismo tamaño (40 px, cómodos para el dedo): reportar, tema y salir. */}
+          <div className="flex items-center">
+            <ReportarProblema compacto />
+            <ThemeToggle className={ICONO_MOVIL} />
+            <button onClick={signOut} aria-label="Cerrar sesión" title="Cerrar sesión" className={ICONO_MOVIL}>
+              <IconLogout width={18} height={18} />
             </button>
-          )}
+          </div>
         </div>
       </header>
 
