@@ -119,7 +119,7 @@ export function Field({
   const id = useId();
   return (
     <div className={cx("space-y-1.5", className)}>
-      <label htmlFor={id} className="block text-[12px] font-medium uppercase tracking-[0.05em] text-muted">
+      <label htmlFor={id} className="block text-[12px] font-bold uppercase tracking-[0.05em] text-fg/80">
         {label}
       </label>
       {children(id)}
