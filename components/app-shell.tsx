@@ -135,28 +135,29 @@ export function AppShell({ children }: { children: ReactNode }) {
             })}
           </ul>
         </nav>
+        {/* Ayuda: discreta, fuera del bloque de la cuenta */}
+        <div className="px-3 pb-2">
+          <ReportarProblema className="w-full" />
+        </div>
+        {/* Cuenta: una sola fila (iniciales, nombre y correo; tema y salir como íconos) */}
         <div className="border-t border-border px-3 py-3">
-          <div className="flex items-center gap-2.5 rounded-ctl px-2 py-1.5" title={`${profile.nombre} · ${user.email ?? ""}`}>
+          <div className="flex items-center gap-2.5 px-2" title={`${profile.nombre} · ${user.email ?? ""}`}>
             <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-subtle text-[12px] font-bold text-fg">
               {iniciales(profile.nombre)}
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-bold leading-tight">{nombreCorto(profile.nombre)}</p>
-              <p className="truncate text-[11px] leading-tight text-muted">{user.email}</p>
+              <p className="truncate text-[11px] leading-tight text-faint">{user.email}</p>
             </div>
-          </div>
-          <div className="mt-1 px-1">
-            <ReportarProblema className="w-full" />
-          </div>
-          <div className="flex items-center justify-between px-1">
+            <ThemeToggle />
             <button
               onClick={signOut}
-              className="flex h-8 items-center gap-2 rounded-ctl px-2 text-[13px] text-muted transition-colors duration-100 hover:bg-subtle hover:text-fg"
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+              className="-mr-1 grid h-8 w-8 shrink-0 place-items-center rounded-ctl text-muted transition-colors duration-100 hover:bg-subtle hover:text-fg"
             >
-              <IconLogout width={15} height={15} />
-              Cerrar sesión
+              <IconLogout width={16} height={16} />
             </button>
-            <ThemeToggle />
           </div>
         </div>
       </aside>

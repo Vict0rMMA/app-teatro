@@ -429,6 +429,7 @@ interface Reporte {
   pagina: string;
   mensaje: string;
   navegador: string;
+  fotos: number;
   resuelto: boolean;
   creado: number | null;
 }
@@ -503,6 +504,7 @@ function Reportes({ ahora }: { ahora: number }) {
                   </span>
                 </p>
                 <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed">{r.mensaje}</p>
+                {r.fotos > 0 && <FotosReporte id={r.id} cantidad={r.fotos} />}
                 <p className="mt-1.5 text-[12px] text-faint">
                   {r.email} · {r.navegador}
                 </p>
@@ -522,5 +524,53 @@ function Reportes({ ahora }: { ahora: number }) {
         </ul>
       )}
     </section>
+  );
+}
+
+/** Miniaturas de las fotos de un reporte; se cargan al abrir (no pesan en la lista). */
+function FotosReporte({ id, cantidad }: { id: string; cantidad: number }) {
+  const [fotos, setFotos] = useState<Array<string | null> | null>(null);
+  const [grande, setGrande] = useState<string | null>(null);
+
+  async function ver() {
+    setFotos(Array(cantidad).fill(null));
+    const datos = await Promise.all(
+      Array.from({ length: cantidad }, (_, n) =>
+        apiJson<{ data: string }>(`/api/reportes?foto=${id}&n=${n}`, { cache: "no-store" })
+          .then((r) => `data:image/jpeg;base64,${r.data}`)
+          .catch(() => ""),
+      ),
+    );
+    setFotos(datos);
+  }
+
+  if (!fotos)
+    return (
+      <button type="button" onClick={ver} className="mt-2 text-[13px] font-bold text-brand underline-offset-2 hover:underline">
+        Ver {cantidad === 1 ? "foto" : `${cantidad} fotos`}
+      </button>
+    );
+
+  return (
+    <>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {fotos.map((f, i) =>
+          f === null ? (
+            <Skeleton key={i} className="h-24 w-36" />
+          ) : f === "" ? (
+            <p key={i} className="text-[12px] text-muted">No se pudo cargar la foto {i + 1}.</p>
+          ) : (
+            <button key={i} type="button" onClick={() => setGrande(f)} className="overflow-hidden rounded-ctl border border-border" aria-label={`Ampliar foto ${i + 1}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={f} alt={`Foto ${i + 1} del reporte`} className="h-24 w-36 object-cover transition-opacity duration-100 hover:opacity-90" />
+            </button>
+          ),
+        )}
+      </div>
+      <Modal open={!!grande} onClose={() => setGrande(null)} title="Foto del reporte" wide>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {grande && <img src={grande} alt="Foto del reporte" className="mx-auto max-h-[75vh] w-auto rounded-ctl" />}
+      </Modal>
+    </>
   );
 }

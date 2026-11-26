@@ -15,7 +15,7 @@ export async function DELETE(req: Request) {
     // El cliente debe enviar { confirm: "ELIMINAR" }: evita borrados por una llamada accidental.
     z.object({ confirm: z.literal("ELIMINAR") }).parse(await req.json().catch(() => ({})));
 
-    for (const c of ["events", "workLogs", "workPlaces", "rateLimits", "reportes"]) await deleteOwned(c, user.uid);
+    for (const c of ["events", "workLogs", "workPlaces", "rateLimits", "reportes", "reporteFotos"]) await deleteOwned(c, user.uid);
     await adminDb().recursiveDelete(adminDb().collection("users").doc(user.uid)); // incluye la firma
     await adminAuth().deleteUser(user.uid);
     return NextResponse.json({ ok: true });
