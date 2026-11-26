@@ -8,6 +8,7 @@ import { rutaInicial, type Seccion } from "@/lib/permisos";
 import { useSession } from "./auth-provider";
 import { usePermisos } from "./permisos";
 import { IconClock, IconHistory, IconLogout, IconPlus, IconReceipt, IconSettings, IconUsers } from "./icons";
+import { ReportarProblema } from "./reportar";
 import { ThemeToggle } from "./theme";
 import { cx } from "./ui";
 
@@ -144,7 +145,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               <p className="truncate text-[11px] leading-tight text-muted">{user.email}</p>
             </div>
           </div>
-          <div className="mt-1 flex items-center justify-between px-1">
+          <div className="mt-1 px-1">
+            <ReportarProblema className="w-full" />
+          </div>
+          <div className="flex items-center justify-between px-1">
             <button
               onClick={signOut}
               className="flex h-8 items-center gap-2 rounded-ctl px-2 text-[13px] text-muted transition-colors duration-100 hover:bg-subtle hover:text-fg"
@@ -163,6 +167,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Logo className="h-7" />
         </Link>
         <div className="flex items-center gap-1">
+          <ReportarProblema compacto />
           <ThemeToggle />
           {/* Sin Ajustes no hay dónde cerrar sesión en el celular: botón aquí. */}
           {!puede("ajustes") && (

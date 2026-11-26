@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/components/auth-provider";
 import { useToast } from "@/components/toast";
+import { apiJson } from "@/lib/firebase/client";
 import { SECCIONES, TODAS, type Seccion } from "@/lib/permisos";
 import { Badge, Button, EmptyState, Modal, PageHeader, Skeleton, Stat, StatRow } from "@/components/ui";
 
@@ -185,6 +186,8 @@ export default function AdminPage() {
   return (
     <>
       <PageHeader title="Administración" description={contexto} />
+
+      <Reportes ahora={ahora} />
 
       {error && !users?.length ? (
         <div className="border-y border-border">
@@ -416,5 +419,108 @@ function Permisos({
         })}
       </div>
     </div>
+  );
+}
+
+interface Reporte {
+  id: string;
+  nombre: string;
+  email: string;
+  pagina: string;
+  mensaje: string;
+  navegador: string;
+  resuelto: boolean;
+  creado: number | null;
+}
+
+/** Reportes de problemas que envían las cuentas ("Reportar un problema"). Solo los ve la administradora. */
+function Reportes({ ahora }: { ahora: number }) {
+  const toast = useToast();
+  const [lista, setLista] = useState<Reporte[] | null>(null);
+  const [verResueltos, setVerResueltos] = useState(false);
+  const [ocupado, setOcupado] = useState<string | null>(null);
+
+  const cargar = useCallback(async () => {
+    try {
+      const r = await apiJson<{ reportes: Reporte[] }>("/api/reportes", { cache: "no-store" });
+      setLista(r.reportes);
+    } catch {
+      setLista((l) => l ?? []);
+    }
+  }, []);
+
+  useEffect(() => {
+    void cargar();
+    const t = window.setInterval(() => void cargar(), 60_000);
+    return () => window.clearInterval(t);
+  }, [cargar]);
+
+  async function cambiar(id: string, cambio: { resuelto?: boolean; borrar?: boolean }) {
+    setOcupado(id);
+    try {
+      await apiJson("/api/reportes", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, ...cambio }) });
+      setLista((l) => (l ? (cambio.borrar ? l.filter((x) => x.id !== id) : l.map((x) => (x.id === id ? { ...x, resuelto: !!cambio.resuelto } : x))) : l));
+    } catch (e) {
+      toast.error("No se pudo actualizar", (e as Error).message);
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  if (!lista) return null;
+  const pendientes = lista.filter((r) => !r.resuelto);
+  const visibles = verResueltos ? lista : pendientes;
+
+  return (
+    <section className="mb-10">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-xl font-bold tracking-tight">
+          Reportes de problemas
+          {pendientes.length > 0 && (
+            <span className="rounded-full bg-brand px-2 py-0.5 text-[12px] font-bold text-brand-fg">{pendientes.length}</span>
+          )}
+        </h2>
+        {lista.some((r) => r.resuelto) && (
+          <button type="button" onClick={() => setVerResueltos((v) => !v)} className="text-[13px] text-muted underline-offset-2 hover:text-fg hover:underline">
+            {verResueltos ? "Ocultar resueltos" : "Ver también los resueltos"}
+          </button>
+        )}
+      </div>
+      {visibles.length === 0 ? (
+        <p className="border-y border-border py-5 text-[13px] text-muted">
+          {lista.length ? "No hay reportes pendientes." : "Nadie ha reportado problemas. Cuando alguien use \u201cReportar un problema\u201d, aparece aquí."}
+        </p>
+      ) : (
+        <ul className="divide-y divide-border border-y border-border">
+          {visibles.map((r) => (
+            <li key={r.id} className={`flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between ${r.resuelto ? "opacity-60" : ""}`}>
+              <div className="min-w-0">
+                <p className="text-[13px]">
+                  <span className="font-bold">{r.nombre || r.email || "Sin nombre"}</span>
+                  <span className="text-muted">
+                    {" "}
+                    · {r.pagina || "—"} · {hace(r.creado ? new Date(r.creado).toISOString() : null, ahora)}
+                  </span>
+                </p>
+                <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed">{r.mensaje}</p>
+                <p className="mt-1.5 text-[12px] text-faint">
+                  {r.email} · {r.navegador}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" variant={r.resuelto ? "secondary" : "primary"} loading={ocupado === r.id} onClick={() => cambiar(r.id, { resuelto: !r.resuelto })}>
+                  {r.resuelto ? "Reabrir" : "Marcar resuelto"}
+                </Button>
+                {r.resuelto && (
+                  <Button size="sm" variant="ghost" disabled={ocupado === r.id} onClick={() => cambiar(r.id, { borrar: true })}>
+                    Borrar
+                  </Button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
