@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ClipboardEvent } from "
 import { useSession } from "@/components/auth-provider";
 import { saveBlob } from "@/components/hooks";
 import { DocxPreview } from "@/components/docx-preview";
+import { IconCheck, IconFile, IconUpload } from "@/components/icons";
 import { useToast } from "@/components/toast";
 import { Badge, Button, Card, Field, Input, Modal, Notice, Spinner, Textarea, cx } from "@/components/ui";
 import { borrarBorrador, guardarBorrador, leerBorrador } from "@/lib/borrador";
@@ -490,10 +491,11 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
                 <p className="eyebrow">Cómo pegarlo</p>
                 <ol className="mt-3 space-y-2.5 text-muted">
                   <li>
-                    <span className="tabular mr-2 text-fg">1.</span>En el Excel, selecciona tus filas (mejor con el encabezado).
+                    <span className="tabular mr-2 text-fg">1.</span>En el Excel del consolidado, <span className="font-medium text-fg">filtra tu nombre</span> para que solo queden tus filas.
                   </li>
                   <li>
-                    <span className="tabular mr-2 text-fg">2.</span>Cópialas con <span className="font-medium text-fg">Ctrl + C</span>.
+                    <span className="tabular mr-2 text-fg">2.</span>Selecciona todas las celdas con tu nombre (mejor con el encabezado) y cópialas con{" "}
+                    <span className="font-medium text-fg">Ctrl + C</span>.
                   </li>
                   <li>
                     <span className="tabular mr-2 text-fg">3.</span>Pégalas en el cuadro con <span className="font-medium text-fg">Ctrl + V</span>.
@@ -527,7 +529,13 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
               ) : (
                 <>
                   <p className="text-lg font-bold tracking-tight">Pega una captura (Ctrl+V) o elige una foto</p>
-                  <p className="max-w-sm text-[13px] text-muted">La lee Gemini. Una foto borrosa puede confundir números: revisa la tabla antes de generar.</p>
+                  <div className="max-w-md rounded-ctl border border-warn/40 bg-warn/10 px-4 py-3 text-left text-[13px] leading-relaxed">
+                    <p className="font-bold text-warn">Ojo: la foto la lee una IA</p>
+                    <p className="mt-1 text-fg/85">
+                      Puede quedar bien o con errores, sobre todo si la foto está borrosa o cortada. Revisa cada fila, hora y valor antes de generar. Si
+                      quieres que salga exacto, mejor pega las celdas del Excel.
+                    </p>
+                  </div>
                   <span className="mt-1 inline-flex h-9 items-center rounded-ctl border border-border px-3 text-[13px] font-medium">Elegir imagen</span>
                 </>
               )}
@@ -557,9 +565,13 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
         </Card>
 
         {/* Formato del mes */}
-        <div className="mt-4 flex flex-col gap-3 rounded-box border border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 text-[13px]">
-            <p className="font-bold">Formato de la cuenta</p>
+        <div className="mt-4 flex flex-col gap-4 rounded-box border border-border bg-surface px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3.5 text-[13px]">
+            <span aria-hidden className={cx("grid h-10 w-10 shrink-0 place-items-center rounded-ctl", formato ? "bg-ok/15 text-ok" : "bg-subtle text-muted")}>
+              {formato ? <IconCheck width={18} height={18} strokeWidth={2} /> : <IconFile width={18} height={18} strokeWidth={1.8} />}
+            </span>
+            <div className="min-w-0">
+              <p className="font-bold">Formato de la cuenta (Word)</p>
             {formato ? (
               <p className="mt-0.5 truncate text-muted">
                 {formato.name}
@@ -572,9 +584,13 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
                 )}
               </p>
             ) : (
-              <p className="mt-0.5 text-muted">Sube el DOCX del mes que te enviaron. Si no, se usa el incluido (octubre 2026).</p>
+              <p className="mt-0.5 max-w-xl leading-relaxed text-muted">
+                Sube aquí el <span className="font-medium text-fg">Word de la cuenta de cobro que mandan al grupo de WhatsApp</span> cada mes. Si no lo subes,
+                se usa el de octubre 2026.
+              </p>
             )}
             {errorFormato && <p className="mt-1 text-[12px] text-danger">{errorFormato}</p>}
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {formato && (
@@ -582,8 +598,9 @@ export default function CuentaCobro({ registros, pdfDisponible }: { registros: R
                 Usar el incluido
               </button>
             )}
-            <label className="inline-flex h-9 cursor-pointer items-center rounded-ctl border border-border px-3 text-[13px] font-medium transition-colors duration-100 hover:border-fg/30 hover:bg-surface">
-              {formato ? "Cambiar" : "Subir formato"}
+            <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-ctl border border-border bg-bg px-4 text-[13px] font-bold transition-colors duration-100 hover:border-fg/30">
+              <IconUpload width={15} height={15} strokeWidth={1.9} />
+              {formato ? "Cambiar" : "Subir el Word"}
               <input
                 type="file"
                 accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
