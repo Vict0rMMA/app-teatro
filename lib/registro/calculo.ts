@@ -95,6 +95,8 @@ export function salidaSugerida(rows: Array<{ salida?: string | null }>, horaCita
 export interface Persona {
   nombre: string;
   horas: number | null;
+  /** salida propia (si se fue a otra hora); si no, la común */
+  salida?: string | null;
 }
 
 export interface FilaCalculada {
@@ -115,10 +117,11 @@ export function calcularRegistro(
   const valorHora = opts.valorHora ?? VALOR_HORA;
   const filas: FilaCalculada[] = personas.map((p) => {
     const ok = p.horas != null && p.horas > 0;
+    const salida = p.salida || opts.salida;
     return {
       horas: ok ? p.horas : null,
-      salida: opts.salida,
-      llegada: ok && opts.salida ? fromMin(toMin(opts.salida) - (p.horas as number) * 60) : null,
+      salida,
+      llegada: ok && salida ? fromMin(toMin(salida) - (p.horas as number) * 60) : null,
       valor: ok ? Math.round((p.horas as number) * valorHora) : null,
     };
   });

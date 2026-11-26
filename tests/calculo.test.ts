@@ -99,3 +99,18 @@ describe("calcularRegistro", () => {
     expect(r.alertas.some((a) => a.includes("no es coherente"))).toBe(true);
   });
 });
+
+describe("salida propia por persona", () => {
+  it("quien se va a otra hora conserva su llegada y suma sus horas", () => {
+    const r = calcularRegistro(
+      [
+        { nombre: "Ana", horas: 4 },
+        { nombre: "Luis", horas: 5, salida: "18:30" },
+      ],
+      { salida: "17:30", horaCitacion: "13:30", valorHora: 10000 },
+    );
+    expect(r.filas[0]).toMatchObject({ llegada: "13:30", salida: "17:30", horas: 4, valor: 40000 });
+    expect(r.filas[1]).toMatchObject({ llegada: "13:30", salida: "18:30", horas: 5, valor: 50000 });
+    expect(r.totalHoras).toBe(9);
+  });
+});

@@ -113,7 +113,9 @@ export default function NuevaPlanillaPage() {
   useEffect(() => {
     if (!restaurado) return; // no pisar el borrador antes de leerlo
     const t = window.setTimeout(() => {
-      if (draft && mine) void guardarBorrador(claveBorrador, { draft, mine, manualReason, firmaEvento, showLocs });
+      // El borrador nunca guarda cédulas ni celulares.
+      const sinDatos = draft && { ...draft, personas: draft.personas.map((p) => ({ ...p, cedula: "", telefono: "" })) };
+      if (sinDatos && mine) void guardarBorrador(claveBorrador, { draft: sinDatos, mine, manualReason, firmaEvento, showLocs });
       else void borrarBorrador(claveBorrador);
     }, 400);
     return () => window.clearTimeout(t);
@@ -205,6 +207,9 @@ export default function NuevaPlanillaPage() {
         observacion: s.observacion,
         ubi: s.ubi,
         cc: s.cc,
+        salida: "",
+        cedula: "",
+        telefono: "",
         delArchivo: true,
         auto: s.auto,
       }));
@@ -245,7 +250,7 @@ export default function NuevaPlanillaPage() {
   const baseValida = baseNum > 0 && baseNum <= 16;
   const base = baseValida ? baseNum : HORAS_BASE;
   const personasCalc = useMemo(
-    () => (draft?.personas ?? []).map((p) => ({ nombre: p.nombre, horas: horasDe(p, base, extras) })),
+    () => (draft?.personas ?? []).map((p) => ({ nombre: p.nombre, horas: horasDe(p, base, extras), salida: p.salida || null })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [draft?.personas, base, extras.ac, extras.c],
   );
@@ -311,6 +316,9 @@ export default function NuevaPlanillaPage() {
         observacion: p.observacion.trim(),
         ubi: p.ubi,
         cc: p.cc,
+        salida: p.salida || null,
+        // Cédula y celular solo de quien se agregó a mano: van al REGISTRO descargado y no se guardan.
+        ...(p.delArchivo ? {} : { cedula: p.cedula ?? "", telefono: p.telefono ?? "" }),
       })),
       workLog: mine.guardar
         ? filaIdx >= 0

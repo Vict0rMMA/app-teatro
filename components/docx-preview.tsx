@@ -40,13 +40,28 @@ export function DocxPreview({ load }: { load: () => Promise<Blob> }) {
         const [{ renderAsync }, original] = await Promise.all([import("docx-preview"), load()]);
         const blob = await logosEnLinea(original).catch(() => original);
         if (cancelled || !host.current) return;
-        host.current.innerHTML = "";
-        await renderAsync(blob, host.current, undefined, {
-          inWrapper: true,
-          ignoreLastRenderedPageBreak: true,
-          breakPages: true,
-          experimental: true,
-        });
+        // Algunos Word reales (tablas grandes, saltos de sección, campos) rompen el modo completo o lo
+        // dejan en blanco: se reintenta con el archivo tal cual y opciones simples antes de rendirse.
+        const intentos: Array<[Blob, Parameters<typeof renderAsync>[3]]> = [
+          [blob, { inWrapper: true, ignoreLastRenderedPageBreak: true, breakPages: true, experimental: true }],
+          [original, { inWrapper: true, ignoreLastRenderedPageBreak: true, breakPages: false, experimental: false, ignoreFonts: true }],
+          [original, { inWrapper: false, ignoreWidth: true, ignoreHeight: true, breakPages: false, ignoreFonts: true, renderHeaders: false, renderFooters: false }],
+        ];
+        let listo = false;
+        for (const [archivo, opciones] of intentos) {
+          if (cancelled || !host.current) return;
+          host.current.innerHTML = "";
+          try {
+            await renderAsync(archivo, host.current, undefined, opciones);
+            if ((host.current.textContent ?? "").trim().length > 0) {
+              listo = true;
+              break;
+            }
+          } catch {
+            /* siguiente intento */
+          }
+        }
+        if (!listo) throw new Error("sin vista previa");
         if (!cancelled) setState("ready");
       } catch {
         if (!cancelled) setState("error");

@@ -16,6 +16,11 @@ export interface PersonaDraft {
   observacion: string;
   ubi: string;
   cc: string;
+  /** salida propia (HH:mm); vacío = la salida común */
+  salida: string;
+  /** solo personas agregadas a mano: van al REGISTRO descargado, nunca se guardan */
+  cedula: string;
+  telefono: string;
   /** viene del archivo: nombre, cargo y UBI no se editan */
   delArchivo: boolean;
   /** sin horas propias: sigue la regla (A = base, AC = base + 1, C = base + 2) */
@@ -32,6 +37,9 @@ export const nuevaPersona = (): PersonaDraft => ({
   observacion: "",
   ubi: "",
   cc: "",
+  salida: "",
+  cedula: "",
+  telefono: "",
   delArchivo: false,
   auto: true,
 });
@@ -86,7 +94,7 @@ export function RegistroTable({
               <th className="w-14 py-2 font-medium">UBI</th>
               <th className="w-24 py-2 font-medium">Horas</th>
               <th className="w-28 py-2 font-medium">Llegada</th>
-              <th className="w-[84px] py-2 font-medium">Salida</th>
+              <th className="w-28 py-2 font-medium">Salida</th>
               <th className="w-24 py-2 text-right font-medium">Valor</th>
               <th className="w-14 py-2 pl-3 font-medium">P.P</th>
               <th className="w-16 py-2 font-medium">Desemp.</th>
@@ -107,7 +115,29 @@ export function RegistroTable({
                     {r.delArchivo ? (
                       <span className="block truncate px-2">{r.nombre}</span>
                     ) : (
-                      <Input className={cell} value={r.nombre} placeholder="Nombre completo" onChange={(e) => update(r.key, { nombre: e.target.value })} aria-label={`Nombre fila ${i + 1}`} />
+                      <div className="space-y-1 py-0.5">
+                        <Input className={cell} value={r.nombre} placeholder="Nombre completo" onChange={(e) => update(r.key, { nombre: e.target.value })} aria-label={`Nombre fila ${i + 1}`} />
+                        <div className="grid grid-cols-2 gap-1">
+                          <Input
+                            className={cx(cell, "tabular h-7 text-[12px]")}
+                            inputMode="numeric"
+                            value={r.cedula}
+                            maxLength={15}
+                            placeholder="Cédula"
+                            onChange={(e) => update(r.key, { cedula: e.target.value.replace(/\D/g, "") })}
+                            aria-label={`Cédula de ${r.nombre || `la fila ${i + 1}`}`}
+                          />
+                          <Input
+                            className={cx(cell, "tabular h-7 text-[12px]")}
+                            inputMode="tel"
+                            value={r.telefono}
+                            maxLength={16}
+                            placeholder="Celular"
+                            onChange={(e) => update(r.key, { telefono: e.target.value.replace(/[^\d+]/g, "") })}
+                            aria-label={`Celular de ${r.nombre || `la fila ${i + 1}`}`}
+                          />
+                        </div>
+                      </div>
                     )}
                   </td>
                   <td className="py-1 pr-1">
@@ -143,18 +173,40 @@ export function RegistroTable({
                     {r.auto && <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase text-faint">auto</span>}
                   </td>
                   <td className="py-1 pr-1">
-                    <LlegadaInput
+                    <HoraInput
                       value={f?.llegada ?? ""}
-                      salida={salida}
+                      disabled={!(r.salida || salida)}
+                      title={r.salida || salida ? `Escribe la llegada: las horas se calculan hasta la salida (${hora12(r.salida || salida, true)}).` : "Primero define la salida"}
                       label={`Llegada de ${r.nombre || `la fila ${i + 1}`}`}
                       onCommit={(llegada) => {
+                        if (!llegada) return;
                         // Llegada escrita → horas = salida − llegada (ej. 1:30 a 5:30 = 4 h).
-                        const h = diffHoras(llegada, salida);
+                        const h = diffHoras(llegada, r.salida || salida);
                         if (h != null && h > 0) update(r.key, { horas: duracionCampo(h) });
                       }}
                     />
                   </td>
-                  <td className="tabular py-1 pl-2 text-muted">{f?.salida ? hora12(f.salida, true) : "—"}</td>
+                  <td className="py-1 pr-1">
+                    <HoraInput
+                      value={f?.salida ?? ""}
+                      destacada={!!r.salida && r.salida !== salida}
+                      title={
+                        r.salida && r.salida !== salida
+                          ? `Salida propia. La común es ${hora12(salida, true)}; borra la hora para volver a ella.`
+                          : "Escribe otra salida si esta persona se fue a otra hora: la llegada se mantiene y las horas se recalculan."
+                      }
+                      label={`Salida de ${r.nombre || `la fila ${i + 1}`}`}
+                      onCommit={(nueva) => {
+                        // Borrar = volver a la salida común.
+                        if (!nueva) return onChange(rows.map((x) => (x.key === r.key ? { ...x, salida: "" } : x)));
+                        const propia = nueva === salida ? "" : nueva;
+                        // Salida escrita → la llegada se queda y las horas = salida nueva − llegada.
+                        const h = f?.llegada ? diffHoras(f.llegada, nueva) : null;
+                        if (h != null && h > 0) update(r.key, { salida: propia, horas: duracionCampo(h) });
+                        else onChange(rows.map((x) => (x.key === r.key ? { ...x, salida: propia } : x)));
+                      }}
+                    />
+                  </td>
                   <td className="tabular py-1 pr-1 text-right">{formatCOP(f?.valor)}</td>
                   <td className="py-1 pl-3 pr-1">
                     <Input className={cell} value={r.pp} maxLength={4} onChange={(e) => update(r.key, { pp: e.target.value })} aria-label="P.P" />
@@ -202,10 +254,24 @@ export function RegistroTable({
 }
 
 /**
- * Hora de llegada editable: las horas pasan a ser salida − llegada. Mientras tiene el foco,
- * el campo conserva lo que escribes (no salta entre teclas aunque la tabla se recalcule).
+ * Hora editable (llegada o salida). Mientras tiene el foco, el campo conserva lo que escribes
+ * (no salta entre teclas aunque la tabla se recalcule).
  */
-function LlegadaInput({ value, salida, label, onCommit }: { value: string; salida: string | null; label: string; onCommit: (llegada: string) => void }) {
+function HoraInput({
+  value,
+  label,
+  title,
+  disabled,
+  destacada,
+  onCommit,
+}: {
+  value: string;
+  label: string;
+  title: string;
+  disabled?: boolean;
+  destacada?: boolean;
+  onCommit: (hora: string) => void;
+}) {
   const [text, setText] = useState(value);
   const [editing, setEditing] = useState(false);
   useEffect(() => {
@@ -214,16 +280,16 @@ function LlegadaInput({ value, salida, label, onCommit }: { value: string; salid
 
   function commit() {
     setEditing(false);
-    if (text && text !== value) onCommit(text);
+    if (text !== value) onCommit(text);
   }
 
   return (
     <Input
       type="time"
-      className={cx(cell, "tabular")}
+      className={cx(cell, "tabular", destacada && "border-brand/40 font-bold text-fg")}
       value={text}
-      disabled={!salida}
-      title={salida ? `Escribe la llegada: las horas se calculan hasta la salida (${hora12(salida, true)}).` : "Primero define la salida"}
+      disabled={disabled}
+      title={title}
       onFocus={() => setEditing(true)}
       onChange={(e) => {
         // El texto se queda como lo escribes; las horas se actualizan apenas la hora está completa.

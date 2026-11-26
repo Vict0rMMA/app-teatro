@@ -16,6 +16,11 @@ export const personaSchema = z.object({
   observacion: texto(200),
   ubi: texto(20),
   cc: texto(20),
+  /** salida propia; null = la común */
+  salida: horaOpt.optional(),
+  /** solo para personas agregadas a mano: van al REGISTRO que se descarga y no se guardan */
+  cedula: z.string().regex(/^\d{0,15}$/, "cédula inválida").optional(),
+  telefono: z.string().regex(/^\+?\d{0,15}$/, "celular inválido").optional(),
 });
 
 export const workLogInputSchema = z.object({
