@@ -55,6 +55,15 @@
   textarea {
     font-size: 16px; /* evita el zoom de iOS al enfocar */
   }
+  /* En pantallas táctiles ninguna casilla baja de 16 px (aunque tenga una clase más pequeña,
+     como las celdas de la tabla del personal): si baja, el iPhone hace zoom al tocarla. */
+  @media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
   @media (min-width: 640px) and (pointer: fine) {
     input,
     select,
